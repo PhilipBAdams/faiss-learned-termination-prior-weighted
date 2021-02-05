@@ -1,3 +1,10 @@
+# Faiss with learned adaptive early termination (and prior-weighted HNSW)
+
+Forked from https://github.com/efficient/faiss-learned-termination
+
+
+Original Documentation below:
+
 # Faiss with learned adaptive early termination
 
 This GitHub repository includes the source code for the [SIGMOD paper](https://conglongli.github.io/paper/ann-sigmod2020.pdf):

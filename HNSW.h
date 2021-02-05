@@ -46,6 +46,8 @@ namespace faiss {
 struct VisitedTable;
 struct DistanceComputer; // from AuxIndexStructures
 
+enum LevelSelectionMethod {Random, PriorSum, PriorMax};
+
 struct HNSW {
   /// internal storage of vectors (32 bits: this is expensive)
   typedef int storage_idx_t;
@@ -157,6 +159,9 @@ struct HNSW {
 
   // methods that initialize the tree sizes
 
+  LevelSelectionMethod lselect;
+  std::vector<double> priors;
+
   /// initialize the assign_probas and cum_nneighbor_per_level to
   /// have 2*M links on level 0 and M links on levels > 0
   void set_default_probas(int M, float levelMult);
@@ -180,9 +185,9 @@ struct HNSW {
   explicit HNSW(int M = 32);
 
   /// pick a random level for a new point
-  int random_level();
+	int random_level(size_t n);
 
-  /// add n random levels to table (for debugging...)
+	/// add n random levels to table (for debugging...)
   void fill_with_random_links(size_t n);
 
   void add_links_starting_from(DistanceComputer& ptdis,
