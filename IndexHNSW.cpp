@@ -233,6 +233,18 @@ IndexHNSW::~IndexHNSW() {
     }
 }
 
+void IndexHNSW::set_priors(std::vector<double> priors, std::string strategy)
+{
+    this->hnsw.priors = priors;
+    if (!strategy.compare("Random")) {
+        this->hnsw.lselect = Random;
+    } else if (!strategy.compare("PriorSum")) {
+        this->hnsw.lselect = PriorSum;
+    } else if (!strategy.compare("PriorMax")) {
+        this->hnsw.lselect = PriorMax;
+    }
+}
+
 void IndexHNSW::train(idx_t n, const float* x)
 {
     // hnsw structure does not require training

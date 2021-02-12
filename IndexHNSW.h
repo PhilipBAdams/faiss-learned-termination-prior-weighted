@@ -10,6 +10,7 @@
 #pragma once
 
 #include <vector>
+#include <string>
 
 #include "HNSW.h"
 #include "IndexFlat.h"
@@ -150,6 +151,9 @@ struct IndexHNSW : Index {
 
     // Load the prediction model.
     void load_model(char *file);
+
+    /// set priors for underlying HNSW 
+    void set_priors(std::vector<double> priors, std::string strategy);
 };
 
 
