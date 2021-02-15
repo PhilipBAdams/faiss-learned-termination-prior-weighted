@@ -63,7 +63,7 @@ HNSW::HNSW(int M) : rng(12345) {
 
 int HNSW::random_level(size_t n)
 {
-  double f = rng.rand_float();
+  float f = rng.rand_float();
   if (lselect == LevelSelectionMethod::PriorMax) {
     f = std::max(f, priors[n]);
   } else if (lselect == LevelSelectionMethod::PriorSum) {

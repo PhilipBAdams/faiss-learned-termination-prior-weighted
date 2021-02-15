@@ -117,7 +117,7 @@ mkdir -p $RESULT_DIR
 # ### HNSW index without quantization
 # ### GIST 1M dataset
 # # 1) perform binary search to find the min. fixed configurations to reach different accuracy targets for testing queries.
-# $run -mode 0 -batch 1000 -thread 10 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=0 > $RESULT_DIR/result_GIST1M_HNSW16_naive_b1_find
+$run -mode 0 -batch 1000 -thread 10 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=0 -prior "PriorSum" -prior_file "expfalloff"> $RESULT_DIR/result_GIST1M_HNSW16_naive_b1_find
 # # 2) based on the min. config in the result file of 1), evaluate the performance of baseline.
 # $run -mode 0 -batch 1 -db GIST1M -idx HNSW16 -param search_mode=0,efSearch={11,16,27,47,96,163,199,260,372,687,11853} > $RESULT_DIR/result_GIST1M_HNSW16_naive_b1
 # # 3) find the min. fixed number of distance evaluations (i.e., the termination condition we want to achieve) to reach a certain recall target for a sample of training vectors.

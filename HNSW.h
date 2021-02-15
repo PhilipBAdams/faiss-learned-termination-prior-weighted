@@ -160,7 +160,7 @@ struct HNSW {
   // methods that initialize the tree sizes
 
   LevelSelectionMethod lselect;
-  std::vector<double> priors;
+  float* priors;
 
   /// initialize the assign_probas and cum_nneighbor_per_level to
   /// have 2*M links on level 0 and M links on levels > 0

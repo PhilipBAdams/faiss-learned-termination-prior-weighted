@@ -153,7 +153,7 @@ struct IndexHNSW : Index {
     void load_model(char *file);
 
     /// set priors for underlying HNSW 
-    void set_priors(std::vector<double> priors, std::string strategy);
+    void set_priors(float* priors, std::string strategy);
 };
 
 

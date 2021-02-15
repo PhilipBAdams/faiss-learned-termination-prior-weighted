@@ -17,7 +17,7 @@ import util
 # Bookkeeping
 #################################################################
 # Where the dataset base, query, learn files are stored.
-DB_DIR = '/mnt/hdd/conglonl/'
+DB_DIR = '/home/db_admin/Desktop/sf_gist/'
 # Where the ground truth files are stored.
 GT_DIR = 'ground_truth/'
 # Where the *_trained.index files are stored.
@@ -54,6 +54,10 @@ parser.add_argument('-db', '--dbname', help='database name', required=True)
 parser.add_argument('-idx', '--indexkey', help='index key', required=True)
 parser.add_argument('-param', '--parametersets',
     help='parameter sets', required=True, nargs='+')
+parser.add_argument('-prior', '--prior_strategy',
+    help='define the prior strategy (PriorMax, PriorSum, Random)', required=True)
+parser.add_argument('-prior_file', '--prior_file',
+    help='prior file name', required=True)   
 args = vars(parser.parse_args())
 
 # -2 = generate training data.
@@ -77,7 +81,8 @@ binary_range = [int(args['binarysearch'].split(',')[1]),
 dbname = args['dbname'] # e.g.: SIFT1M
 index_key = args['indexkey'] # e.g.: IVF1000
 parametersets = args['parametersets'] # e.g.: nprobe={1,2}
-
+prior_strategy = args['prior_strategy']
+prior_file = args['prior_file']
 # Number of iterations over all queries (to get stable performance number).
 num_iter = 4 
 # When multi-threading is enabled, it indicates that latency measurement
@@ -134,17 +139,19 @@ elif dbname.startswith('GIST'):
     xb = util.mmap_fvecs('{}gist_base.fvecs'.format(DB_DIR))
     xq = util.mmap_fvecs('{}gist_query.fvecs'.format(DB_DIR))
     xt = util.mmap_fvecs('{}gist_learn.fvecs'.format(DB_DIR))
-    gt = util.read_tsv('{}gtGIST1Mtest.tsv'.format(GT_DIR))
-    if search_mode == 0 and train_size > 0 and binary_search == 1:
-        # Take a sample from the training vector to find the minimum fixed
-        # termination condition to reach different accuracy targets. This is
-        # needed to choose the intermediate search result features when
-        # generating training data.
-        xq = xt[:10000]
-        gt = util.read_tsv('{}gtGIST1Mtrain500K.tsv'.format(GT_DIR))[:10000]
-    if search_mode == -2:
-        xq = xt
-        gt = util.read_tsv('{}gtGIST1Mtrain500K.tsv'.format(GT_DIR))
+    gt = util.ivecs_read('{}gist_groundtruth.ivecs'.format(DB_DIR))
+    priors = util.mmap_fvecs('{}gist-priors-{}.fvecs'.format(DB_DIR, prior_file))
+    # gt = util.read_tsv('{}gtGIST1Mtest.tsv'.format(GT_DIR))
+    # if search_mode == 0 and train_size > 0 and binary_search == 1:
+    #     # Take a sample from the training vector to find the minimum fixed
+    #     # termination condition to reach different accuracy targets. This is
+    #     # needed to choose the intermediate search result features when
+    #     # generating training data.
+    #     xq = xt[:10000]
+    #     gt = util.read_tsv('{}gtGIST1Mtrain500K.tsv'.format(GT_DIR))[:10000]
+    # if search_mode == -2:
+    #     xq = xt
+    #     gt = util.read_tsv('{}gtGIST1Mtrain500K.tsv'.format(GT_DIR))
 else:
     print >> sys.stderr, 'unknown dataset', dbname
     sys.exit(1)
@@ -183,6 +190,12 @@ def get_trained_index():
         xtsub = xtsub.astype('float32').copy()
         index.verbose = True
 
+        priors_data = priors.astype(np.float32).copy()
+        priors_data = priors.astype("float32").copy()
+
+        #code breaks here asking for float* priors
+        index.set_priors(priors_data, prior_strategy)
+        
         t0 = time.time()
         index.train(xtsub)
         index.verbose = False

@@ -233,7 +233,7 @@ IndexHNSW::~IndexHNSW() {
     }
 }
 
-void IndexHNSW::set_priors(std::vector<double> priors, std::string strategy)
+void IndexHNSW::set_priors(float* priors, std::string strategy)
 {
     this->hnsw.priors = priors;
     if (!strategy.compare("Random")) {
