@@ -114,22 +114,39 @@ mkdir -p $RESULT_DIR
 # $run -mode 1 -batch 10000 -thread 10 -thresh 241 -bsearch 1,1,4500 -db SIFT10M -idx HNSW16 -param search_mode=2,pred_max=62647 > $RESULT_DIR/result_SIFT10M_HNSW16_tree241_b1_find
 # $run -mode 1 -batch 1 -thresh 241 -db SIFT10M -idx HNSW16 -param search_mode=2,pred_max=62647,efSearch={91,149,248,354,399,463,539,729,3816} > $RESULT_DIR/result_SIFT10M_HNSW16_tree241_b1
 
-# ### HNSW index without quantization
+# ### HNSW index without quantization (PriorSum)
 # ### GIST 1M dataset
 # # 1) perform binary search to find the min. fixed configurations to reach different accuracy targets for testing queries.
-$run -mode 0 -batch 1000 -thread 10 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=0 -prior "PriorSum" -prior_file "expfalloff"> $RESULT_DIR/result_GIST1M_HNSW16_naive_b1_find
+# $run -mode 0 -batch 1000 -thread 10 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=0 -prior "PriorSum" -prior_file "expfalloff"> $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_naive_b1_find
 # # 2) based on the min. config in the result file of 1), evaluate the performance of baseline.
-# $run -mode 0 -batch 1 -db GIST1M -idx HNSW16 -param search_mode=0,efSearch={11,16,27,47,96,163,199,260,372,687,11853} > $RESULT_DIR/result_GIST1M_HNSW16_naive_b1
+# $run -mode 0 -batch 1 -db GIST1M -idx HNSW16  -prior "PriorSum" -prior_file "expfalloff" -param search_mode=0,efSearch={1,1,1,1,2,3,3,3,4,5,9} > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_naive_b1
 # # 3) find the min. fixed number of distance evaluations (i.e., the termination condition we want to achieve) to reach a certain recall target for a sample of training vectors.
-# $run -mode 0 -batch 10000 -train 1 -thread 10 -bsearch 1,1,10000 -db GIST1M -idx HNSW16 -param search_mode=3 > $RESULT_DIR/result_GIST1M_HNSW16_ndis_b1_find
+# $run -mode 0 -batch 10000 -train 1 -thread 10 -bsearch 1,1,10000 -db GIST1M -idx HNSW16 -param search_mode=3 -prior "PriorSum" -prior_file "expfalloff" > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_ndis_b1_find
 # 4) genreate training and testing data for the early terminaiton approach. The -thresh is chosen based on the min. fixed config in 3).
-# $run -mode -1 -batch 1000 -thread 10 -thresh 381,554,801,1260,2441 -db GIST1M -idx HNSW16 -param search_mode=1 > $RESULT_DIR/result_GIST1M_HNSW16_test
-# $run -mode -2 -batch 500000 -train 1 -thread 10 -thresh 381,554,801,1260,2441 -db GIST1M -idx HNSW16 -param search_mode=1 > $RESULT_DIR/result_GIST1M_HNSW16_train
+# $run -mode -1 -batch 1000 -thread 10 -thresh 1,1,27,33,64,96,109,123,147,178,260 -db GIST1M -idx HNSW16 -param search_mode=1 -prior "PriorSum" -prior_file "expfalloff"> $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_test
+# $run -mode -2 -batch 1000 -train 1 -thread 10 -thresh 1,1,27,33,64,96,109,123,147,178,260 -db GIST1M -idx HNSW16 -param search_mode=1 -prior "PriorSum" -prior_file "expfalloff"> $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_train
 # # 5) Using the training and testing data from 4), train the LightGBM decision tree models.
-# $train -train 1 -thresh 381,554,801,1260,2441 -db GIST1M -idx HNSW16
+# $train -train 1 -thresh 1,1,27,33,64,96,109,123,147,178,260 -db GIST1M -idx HNSW16
 # # 6) Based on the performance estimation in the training log in 5), choose the -thresh and prediction model, and evaluate the performance. The pred_max is the Train ground truth max from the training log in 5).
-# $run -mode 1 -batch 1000 -thread 10 -thresh 1260 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=696228 > $RESULT_DIR/result_GIST1M_HNSW16_tree1260_b1_find
-# $run -mode 1 -batch 1 -thresh 1260 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=696228,efSearch={317,478,548,630,772,1282,14899} > $RESULT_DIR/result_GIST1M_HNSW16_tree1260_b1
+# $run -mode 1 -batch 1000 -thread 10 -thresh 27 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318 -prior "PriorSum" -prior_file "expfalloff" > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree27_b1_find
+# $run -mode 1 -batch 1 -thresh 27 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,103,210,325,347,385,481,580,851} -prior "PriorSum" -prior_file "expfalloff" > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree27_b1
+
+# ### HNSW index without quantization (Random)
+# ### GIST 1M dataset
+# # 1) perform binary search to find the min. fixed configurations to reach different accuracy targets for testing queries.
+# $run -mode 0 -batch 1000 -thread 10 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=0 -prior "Random" -prior_file "expfalloff"> $RESULT_DIR/Random_result_GIST1M_HNSW16_naive_b1_find
+# # 2) based on the min. config in the result file of 1), evaluate the performance of baseline.
+# $run -mode 0 -batch 1 -db GIST1M -idx HNSW16 -param search_mode=0,efSearch={1,1,1,1,2,3,3,3,4,5,11} -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_naive_b1
+# # 3) find the min. fixed number of distance evaluations (i.e., the termination condition we want to achieve) to reach a certain recall target for a sample of training vectors.
+# $run -mode 0 -batch 10000 -train 1 -thread 10 -bsearch 1,1,10000 -db GIST1M -idx HNSW16 -param search_mode=3 -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_ndis_b1_find
+# 4) genreate training and testing data for the early terminaiton approach. The -thresh is chosen based on the min. fixed config in 3).
+# $run -mode -1 -batch 1000 -thread 10 -thresh 1,1,26,33,64,96,114,123,150,178,291 -db GIST1M -idx HNSW16 -param search_mode=1 -prior "Random" -prior_file "expfalloff" #> $RESULT_DIR/Random_result_GIST1M_HNSW16_test
+# $run -mode -2 -batch 1000 -train 1 -thread 10 -thresh 1,1,26,33,64,96,114,123,150,178,291 -db GIST1M -idx HNSW16 -param search_mode=1 -prior "Random" -prior_file "expfalloff" #> $RESULT_DIR/Random_result_GIST1M_HNSW16_train
+# # 5) Using the training and testing data from 4), train the LightGBM decision tree models.
+$train -train 1 -thresh 1,1,26,33,64,96,114,123,150,178,291 -db GIST1M -idx HNSW16
+# # 6) Based on the performance estimation in the training log in 5), choose the -thresh and prediction model, and evaluate the performance. The pred_max is the Train ground truth max from the training log in 5).
+# $run -mode 1 -batch 1000 -thread 10 -thresh 26 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=378 -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree26_b1_find
+# $run -mode 1 -batch 1 -thresh 26 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=378,efSearch={1,1,1,100,219,318,367,417,480,550,796} -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree26_b1
 
 #######################################################################################################
 

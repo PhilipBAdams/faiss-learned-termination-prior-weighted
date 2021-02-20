@@ -233,7 +233,7 @@ IndexHNSW::~IndexHNSW() {
     }
 }
 
-void IndexHNSW::set_priors(float* priors, std::string strategy)
+void IndexHNSW::set_priors(idx_t n, float* priors, std::string strategy)
 {
     this->hnsw.priors = priors;
     if (!strategy.compare("Random")) {
@@ -248,8 +248,19 @@ void IndexHNSW::set_priors(float* priors, std::string strategy)
 void IndexHNSW::train(idx_t n, const float* x)
 {
     // hnsw structure does not require training
-    storage->train (n, x);
+    // storage->train (n, x);
     is_trained = true;
+
+    std::string strategy = "PriorSum";
+    std::cout << "I'm a cool cat using the " << strategy << " strategy" << std::endl;
+    this->hnsw.priors = const_cast<float*>(x);
+    if (!strategy.compare("Random")) {
+        this->hnsw.lselect = Random;
+    } else if (!strategy.compare("PriorSum")) {
+        this->hnsw.lselect = PriorSum;
+    } else if (!strategy.compare("PriorMax")) {
+        this->hnsw.lselect = PriorMax;
+    }
 }
 
 void IndexHNSW::search (idx_t n, const float *x, idx_t k,

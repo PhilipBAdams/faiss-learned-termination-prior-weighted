@@ -192,6 +192,7 @@ struct Index {
     /** Display the actual class name and some more info */
     void display () const;
 
+    virtual void set_priors(idx_t n, float* priors, std::string strategy) {};
 
 
 };

@@ -9,7 +9,7 @@ import pickle
 import argparse
 import math
 from multiprocessing.dummy import Pool as ThreadPool
-
+import pdb 
 import faiss
 import util
 
@@ -81,6 +81,7 @@ binary_range = [int(args['binarysearch'].split(',')[1]),
 dbname = args['dbname'] # e.g.: SIFT1M
 index_key = args['indexkey'] # e.g.: IVF1000
 parametersets = args['parametersets'] # e.g.: nprobe={1,2}
+# parametersets = ["1","1","1","1","2","3","3","3","4","5","9"]
 prior_strategy = args['prior_strategy']
 prior_file = args['prior_file']
 # Number of iterations over all queries (to get stable performance number).
@@ -140,7 +141,7 @@ elif dbname.startswith('GIST'):
     xq = util.mmap_fvecs('{}gist_query.fvecs'.format(DB_DIR))
     xt = util.mmap_fvecs('{}gist_learn.fvecs'.format(DB_DIR))
     gt = util.ivecs_read('{}gist_groundtruth.ivecs'.format(DB_DIR))
-    priors = util.mmap_fvecs('{}gist-priors-{}.fvecs'.format(DB_DIR, prior_file))
+    priors_data = util.mmap_fvecs('{}gist-priors-{}.fvecs'.format(DB_DIR, prior_file))
     # gt = util.read_tsv('{}gtGIST1Mtest.tsv'.format(GT_DIR))
     # if search_mode == 0 and train_size > 0 and binary_search == 1:
     #     # Take a sample from the training vector to find the minimum fixed
@@ -150,8 +151,8 @@ elif dbname.startswith('GIST'):
     #     xq = xt[:10000]
     #     gt = util.read_tsv('{}gtGIST1Mtrain500K.tsv'.format(GT_DIR))[:10000]
     # if search_mode == -2:
-    #     xq = xt
-    #     gt = util.read_tsv('{}gtGIST1Mtrain500K.tsv'.format(GT_DIR))
+        # xq = xt
+        # gt = util.read_tsv('{}gtGIST1Mtrain500K.tsv'.format(GT_DIR))
 else:
     print >> sys.stderr, 'unknown dataset', dbname
     sys.exit(1)
@@ -178,8 +179,8 @@ def choose_train_size(index_key):
     return n_train
 
 def get_trained_index():
-    filename = "%s%s_%s_trained.index" % (
-        TRAINED_IDX_DIR, dbname, index_key)
+    filename = "%s%s_%s_%s_trained.index" % (
+        TRAINED_IDX_DIR, prior_strategy, dbname, index_key)
     if not os.path.exists(filename):
         index = faiss.index_factory(d, index_key)
         n_train = choose_train_size(index_key)
@@ -190,14 +191,11 @@ def get_trained_index():
         xtsub = xtsub.astype('float32').copy()
         index.verbose = True
 
-        priors_data = priors.astype(np.float32).copy()
-        priors_data = priors.astype("float32").copy()
-
-        #code breaks here asking for float* priors
-        index.set_priors(priors_data, prior_strategy)
+        priors = priors_data.astype("float32").copy()
+        index.set_priors(priors, prior_strategy)
         
         t0 = time.time()
-        index.train(xtsub)
+        # index.train(xtsub)
         index.verbose = False
         print("train done in {} s".format(time.time() - t0))
         print("storing {}".format(filename))
@@ -231,10 +229,10 @@ def matrix_slice_iterator(x, bs):
         block_ranges)
 
 def get_populated_index():
-    filename = "%s%s_%s_populated.index" % (
-        POPULATED_IDX_DIR, dbname, index_key)
-    filenameC = "%s%s_C%d" % (
-        POPULATED_IDX_DIR, dbname, num_cluster)
+    filename = "%s%s_%s_%s_populated.index" % (
+        POPULATED_IDX_DIR, prior_strategy, dbname, index_key)
+    filenameC = "%s%s_%s_C%d" % (
+        POPULATED_IDX_DIR, prior_strategy, dbname, num_cluster)
 
     if not os.path.exists(filename):
         index = get_trained_index()
@@ -349,6 +347,14 @@ if search_mode < 0:
         data = []
 
 param_list = []
+split_parametersets = re.split("{|}", parametersets[0])
+if len(split_parametersets) > 2:
+    parsed_parametersets = []
+    for param in split_parametersets[1].split(','):
+        parsed_parametersets.append(split_parametersets[0]+param)
+
+    parametersets = parsed_parametersets
+
 for param in parametersets:
     param_list.append(param)
 recall_list = [0.0]*len(parametersets)
@@ -457,6 +463,8 @@ if binary_search == 0:
                             line.append(i+j)
                             for l in range(1+4*len(pred_thresh)):
                                 line.append(D[j][l+1])
+                            results_priors = priors_data[I[j,:10]].astype('float32').flatten().tolist()
+                            line += results_priors
                             data.append(line)
                     else:
                         for j in range(len(I)):

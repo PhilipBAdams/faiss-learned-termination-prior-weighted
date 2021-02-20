@@ -169,6 +169,11 @@ def handle_Index(the_class):
         I = rev_swig_ptr(res.labels, nd).copy()
         return lims, D, I
 
+    def replacement_set_priors(self, priors, strategy):
+        assert priors.flags.contiguous
+        n ,d = priors.shape
+        self.set_priors_c(n, swig_ptr(priors), strategy)
+
     replace_method(the_class, 'add', replacement_add)
     replace_method(the_class, 'add_with_ids', replacement_add_with_ids)
     replace_method(the_class, 'assign', replacement_assign)
@@ -182,6 +187,7 @@ def handle_Index(the_class):
                    ignore_missing=True)
     replace_method(the_class, 'search_and_reconstruct',
                    replacement_search_and_reconstruct, ignore_missing=True)
+    replace_method(the_class, 'set_priors', replacement_set_priors)
 
 def handle_IndexBinary(the_class):
 

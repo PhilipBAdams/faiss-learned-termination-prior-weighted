@@ -192,7 +192,7 @@ def preprocess_and_train(training_dir, model_dir, dbname, index_key, xt, xq,
     
     # Which intermediate search result features will be used.
     if index_key[:4] == 'HNSW':
-        keep_idx = [2]+list(range(feature_idx*4+3, feature_idx*4+7))
+        keep_idx = [2]+list(range(feature_idx*4+3, feature_idx*4+7)) + list(range(len(df_train.columns)))[-10:]
     else:
         keep_idx = list(range(2,12))+list(range(feature_idx*4+12,
             feature_idx*4+16))
@@ -264,7 +264,11 @@ def preprocess_and_train(training_dir, model_dir, dbname, index_key, xt, xq,
     if full_feature:
         if index_key[:4] == 'HNSW':
             feature_name += ['F1_d_start', 'F2_d_1st', 'F3_d_10th',
-                'F4_1st_to_start', 'F5_10th_to_start']
+                'F4_1st_to_start', 'F5_10th_to_start',
+                'F6_prior1', 'F7_prior2', 'F8_prior3',
+                'F9_prior4', 'F10_prior5', 'F11_prior6',
+                'F12_prior7', 'F13_prior8', 'F14_prior9',
+                'F15_prior10']
         else:
             feature_name += [
                 'F1_c_10th_to_c_1st', 'F1_c_20th_to_c_1st',
@@ -274,7 +278,8 @@ def preprocess_and_train(training_dir, model_dir, dbname, index_key, xt, xq,
                 'F1_c_90th_to_c_1st', 'F1_c_100th_to_c_1st',
                 'F2_d_1st', 'F3_d_10th',
                 'F4_d_1st_to_d_10th', 'F5_d_1st_to_c_1st']
-
+    # import pdb
+    # pdb.set_trace()
     train_helper(out_buffer, params, lgb_train, feature_name,
         [train_feature, test_feature], [train_target, test_target],
         ['Train', 'Test'], model_name, num_round=num_round,
@@ -284,7 +289,7 @@ def preprocess_and_train(training_dir, model_dir, dbname, index_key, xt, xq,
 
 if __name__ == "__main__":
     # Where the dataset base, query, learn files are stored.
-    DB_DIR = '/mnt/hdd/conglonl/'
+    DB_DIR = '/home/db_admin/Desktop/sf_gist/'      
     # Where the trained prediction model and training logs are stored.
     MODEL_DIR = 'training_model/'
     # Where the training and testing data files are stored.
