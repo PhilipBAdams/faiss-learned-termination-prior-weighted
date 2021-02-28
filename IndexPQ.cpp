@@ -467,11 +467,20 @@ void IndexPQ::hamming_distance_histogram (idx_t n, const float *x,
 
 
 
+/*****************************************
+ * IndexMultiPQ
+ ******************************************/
 
+IndexMultiPQ::IndexMultiPQ(int d, size_t M, size_t nbits, size_t nbits_high, float threshold, MetricType metric) : IndexPQ(d, M, nbits, metric), pq_high_precision(d, M , nbits_high)
+{
 
+}
 
-
-
+void IndexMultiPQ::train_high_precision(idx_t n, const float* x) 
+{
+    
+    pq_high_precision.train()
+}
 
 
 

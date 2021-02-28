@@ -128,6 +128,53 @@ struct IndexPQStats {
 
 extern IndexPQStats indexPQ_stats;
 
+struct IndexMultiPQ : IndexPQ {
+    MultiPQ  mpq;
+    std::vector<uint8_t> codes_high_precision;
+    std::vector<float> priors;
+    std::unordered_map<idx_t, idx_t> high_precision_lookup;
+
+    /** Constructor.
+     *
+     * @param d      dimensionality of the input vectors
+     * @param M      number of subquantizers
+     * @param nbits  number of bit per subvector index
+     * @param nbits_high number of bit per subvector index for high precision quantizer
+     * @param threshold high/low prior threshold
+     */
+    IndexMultiPQ (int d,                    ///< dimensionality of the input vectors
+                  size_t M,                 ///< number of subquantizers
+                  size_t nbits,             ///< number of bit per subvector index
+                  size_t nbits_high,        ///< number of bit per subvector index for high precision quantizer
+                  float threshold,          ///< high/low prior threshold
+                  MetricType metric = METRIC_L2);
+
+    void train(idx_t n, const float* x);
+
+    void train_high_precision(idx_t n, const float* x);
+
+    void add_priors(idx_t n, std::vector<float> priors);
+
+    void add(idx_t n, const float* x) override;
+
+    void search(
+        idx_t n,
+        const float* x,
+        idx_t k,
+        float* distances,
+        idx_t* labels) const override;
+
+    void reset() override;
+
+    void reconstruct_n(idx_t i0, idx_t ni, float* recons) const override;
+
+    void reconstruct(idx_t key, float* recons) const override;
+
+    long remove_ids(const IDSelector& sel) override;
+
+
+};
+
 
 
 /** Quantizer where centroids are virtual: they are the Cartesian

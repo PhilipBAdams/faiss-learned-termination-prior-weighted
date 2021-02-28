@@ -13,6 +13,7 @@
 #include <stdint.h>
 
 #include <vector>
+#include <unordered_map>
 
 #include "Clustering.h"
 #include "Heap.h"
@@ -234,6 +235,115 @@ struct ProductQuantizer {
         uint64_t decode();
     };
 
+};
+
+struct MultiPQ {
+    using idx_t = Index::idx_t;
+
+    size_t d;              ///< size of the input vectors
+    size_t M;              ///< number of subquantizers
+    size_t nbits_low;      ///< number of bits per quantization index, low precision
+    size_t nbits_high;     ///< number of bits per quantization index, high precision
+
+    // values derived from the above
+    size_t dsub;           ///< dimensionality of each subvector
+    size_t code_size_low;  ///< byte per indexed vector, low precision
+    size_t code_size_high; ///< byte per indexed vector, high precision
+    size_t ksub_low;           ///< number of centroids for each subquantizer
+    size_t ksub_high;           ///< number of centroids for each subquantizer
+
+    std::vector<float> centroids;
+
+    void train_low(idx_t n, const float* x);
+    void train_high(idx_t n, const float* x);
+
+    MultiPQ(size_t d, /* dimensionality of the input vectors */
+            size_t M,          /* number of subquantizers */
+            size_t nbits_low,
+            size_t nbits_high);     /* number of bit per subvector index */
+
+    /// compute derived values when d, M and nbits_low, nbits_high have been set
+    void set_derived_values ();
+
+    /// Define the centroids for subquantizer m
+    void set_params_low (const float * centroids, int m);
+    void set_params_high (const float * centroids, int m);
+
+    /// return the centroids associated with subvector m
+    float * get_centroids (size_t m, size_t i) {
+        return &centroids [(m * ksub + i) * dsub];
+    }
+    const float * get_centroids (size_t m, size_t i) const {
+        return &centroids [(m * ksub + i) * dsub];
+    }
+
+    /// Quantize one vector with the product quantizer
+    void compute_code_low (const float * x, uint8_t * code) const;
+    void compute_code_high (const float * x, uint8_t * code) const;
+
+    /// same as compute_code for several vectors
+    void compute_codes_low (const float * x,
+                            uint8_t * codes,
+                            size_t n) const;
+    void compute_codes_high (const float * x,
+                            uint8_t * codes,
+                            size_t n) const ;
+
+    /// decode a vector from a given code
+    void decode_low (const uint8_t *code, float *x) const;
+    void decode_high (const uint8_t *code, float *x) const;
+
+    void compute_code_from_distance_table_low (const float *tab,
+                                           uint8_t *code) const;
+    void compute_code_from_distance_table_high (const float *tab,
+                                           uint8_t *code) const;
+
+
+    /** Compute distance table for one vector.
+     *
+     * The distance table for x = [x_0 x_1 .. x_(M-1)] is a M * ksub
+     * matrix that contains
+     *
+     *   dis_table (m, j) = || x_m - c_(m, j)||^2
+     *   for m = 0..M-1 and j = 0 .. ksub - 1
+     *
+     * where c_(m, j) is the centroid no j of sub-quantizer m.
+     *
+     * @param x         input vector size d
+     * @param dis_table output table, size M * ksub
+     */
+    void compute_distance_table (const float * x,
+                                 float * dis_table) const;
+
+    /** compute distance table for several vectors
+     * @param nx        nb of input vectors
+     * @param x         input vector size nx * d
+     * @param dis_table output table, size nx * M * ksub
+     */
+    void compute_distance_tables (size_t nx,
+                                  const float * x,
+                                  float * dis_tables) const;
+
+    /** perform a search (L2 distance)
+     * @param x        query vectors, size nx * d
+     * @param nx       nb of queries
+     * @param codes_low    database codes, size ncodes_low * code_size_low
+     * @param codes_high database codes, size ncodes_high * code_size_high
+     * @param ncodes_low   nb of nb vectors
+     * @param ncodes_high number of high precision vectors
+     * @param high_lookup map for looking 
+     * @param res      heap array to store results (nh == nx)
+     * @param init_finalize_heap  initialize heap (input) and sort (output)?
+     */
+    void search (const float * x,
+                 size_t nx,
+                 const uint8_t * codes_low,
+                 const uint8_t * codes_high,
+                 const size_t ncodes_low,
+                 const size_t ncodes_high,
+                 std::unordered_map<idx_t, idx_t> high_lookup,
+                 float_maxheap_array_t *res,
+                 bool init_finalize_heap = true) const;
 };
 
 
