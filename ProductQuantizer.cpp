@@ -1371,7 +1371,7 @@ namespace faiss
     const size_t ksub = pq.ksub_high;
     for (size_t j = 0; j < ncodes; ++j)
     {
-      faiss::ProductQuantizer::PQDecoderGeneric decoder(
+      MultiPQ::PQDecoderGeneric decoder(
           codes + j * ((nbits * M + 7) / 8), nbits);
       float dis = 0;
       const float *__restrict dt = dis_table;
@@ -1495,5 +1495,138 @@ namespace faiss
       heap_reorder<C>(k, heap_dis, heap_ids);
     }
     delete labels_high, distances_high;
+  }
+
+
+  MultiPQ::PQEncoderGeneric::PQEncoderGeneric(uint8_t *code, int nbits,
+                                                       uint8_t offset)
+      : code(code), offset(offset), nbits(nbits), reg(0)
+  {
+    assert(nbits <= 64);
+    if (offset > 0)
+    {
+      reg = (*code & ((1 << offset) - 1));
+    }
+  }
+
+  void MultiPQ::PQEncoderGeneric::encode(uint64_t x)
+  {
+    reg |= (uint8_t)(x << offset);
+    x >>= (8 - offset);
+    if (offset + nbits >= 8)
+    {
+      *code++ = reg;
+
+      for (int i = 0; i < (nbits - (8 - offset)) / 8; ++i)
+      {
+        *code++ = (uint8_t)x;
+        x >>= 8;
+      }
+
+      offset += nbits;
+      offset &= 7;
+      reg = (uint8_t)x;
+    }
+    else
+    {
+      offset += nbits;
+    }
+  }
+
+  MultiPQ::PQEncoderGeneric::~PQEncoderGeneric()
+  {
+    if (offset > 0)
+    {
+      *code = reg;
+    }
+  }
+
+  MultiPQ::PQEncoder8::PQEncoder8(uint8_t *code, int nbits)
+      : code(code)
+  {
+    assert(8 == nbits);
+  }
+
+  void MultiPQ::PQEncoder8::encode(uint64_t x)
+  {
+    *code++ = (uint8_t)x;
+  }
+
+  MultiPQ::PQEncoder16::PQEncoder16(uint8_t *code, int nbits)
+      : code((uint16_t *)code)
+  {
+    assert(16 == nbits);
+  }
+
+  void MultiPQ::PQEncoder16::encode(uint64_t x)
+  {
+    *code++ = (uint16_t)x;
+  }
+
+  MultiPQ::PQDecoderGeneric::PQDecoderGeneric(const uint8_t *code,
+                                                       int nbits)
+      : code(code),
+        offset(0),
+        nbits(nbits),
+        mask((1ull << nbits) - 1),
+        reg(0)
+  {
+    assert(nbits <= 64);
+  }
+
+  uint64_t MultiPQ::PQDecoderGeneric::decode()
+  {
+    if (offset == 0)
+    {
+      reg = *code;
+    }
+    uint64_t c = (reg >> offset);
+
+    if (offset + nbits >= 8)
+    {
+      uint64_t e = 8 - offset;
+      ++code;
+      for (int i = 0; i < (nbits - (8 - offset)) / 8; ++i)
+      {
+        c |= ((uint64_t)(*code++) << e);
+        e += 8;
+      }
+
+      offset += nbits;
+      offset &= 7;
+      if (offset > 0)
+      {
+        reg = *code;
+        c |= ((uint64_t)reg << e);
+      }
+    }
+    else
+    {
+      offset += nbits;
+    }
+
+    return c & mask;
+  }
+
+  MultiPQ::PQDecoder8::PQDecoder8(const uint8_t *code, int nbits)
+      : code(code)
+  {
+    assert(8 == nbits);
+  }
+
+  uint64_t MultiPQ::PQDecoder8::decode()
+  {
+    return (uint64_t)(*code++);
+  }
+
+  MultiPQ::PQDecoder16::PQDecoder16(const uint8_t *code, int nbits)
+      : code((uint16_t *)code)
+  {
+    assert(16 == nbits);
+  }
+
+  uint64_t MultiPQ::PQDecoder16::decode()
+  {
+    return (uint64_t)(*code++);
   }
 } // namespace faiss

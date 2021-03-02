@@ -561,6 +561,8 @@ namespace faiss
         float *distances,
         idx_t *labels) const
     {
+        float_maxheap_array_t res = {
+                    size_t(n), size_t(k), labels, distances};
         mpq.search(x, n, codes_low.data(), codes_high.data(), codes_low.size(), codes_high.size(), high_precision_lookup, high_indexes, &res, true);
     }
 
