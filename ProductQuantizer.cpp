@@ -992,7 +992,7 @@ namespace faiss
 
       Clustering clus(dsub, ksub_low, cp);
       init_hypercube(dsub, nbits_low, n, xslice,
-                       clus.centroids.data());
+                     clus.centroids.data());
 
       if (verbose)
       {
@@ -1018,7 +1018,7 @@ namespace faiss
 
       Clustering clus(dsub, ksub_high, cp);
       init_hypercube(dsub, nbits_high, n, xslice,
-                       clus.centroids.data());
+                     clus.centroids.data());
 
       if (verbose)
       {
@@ -1182,8 +1182,8 @@ namespace faiss
   }
 
   void MultiPQ::compute_codes_low(const float *x,
-                                       uint8_t *codes,
-                                       size_t n) const
+                                  uint8_t *codes,
+                                  size_t n) const
   {
     // process by blocks to avoid using too much RAM
     size_t bs = 256 * 1024;
@@ -1221,8 +1221,8 @@ namespace faiss
   }
 
   void MultiPQ::compute_codes_high(const float *x,
-                                       uint8_t *codes,
-                                       size_t n) const
+                                   uint8_t *codes,
+                                   size_t n) const
   {
     // process by blocks to avoid using too much RAM
     size_t bs = 256 * 1024;
@@ -1260,7 +1260,7 @@ namespace faiss
   }
 
   void MultiPQ::compute_code_from_distance_table_low(const float *tab,
-                                                          uint8_t *code) const
+                                                     uint8_t *code) const
   {
     PQEncoderGeneric encoder(code, nbits_low);
     for (size_t m = 0; m < M; m++)
@@ -1284,7 +1284,7 @@ namespace faiss
   }
 
   void MultiPQ::compute_code_from_distance_table_high(const float *tab,
-                                                          uint8_t *code) const
+                                                      uint8_t *code) const
   {
     PQEncoderGeneric encoder(code, nbits_high);
     for (size_t m = 0; m < M; m++)
@@ -1308,7 +1308,7 @@ namespace faiss
   }
 
   void MultiPQ::compute_distance_table(const float *x,
-                                                float *dis_table) const
+                                       float *dis_table) const
   {
     size_t m;
 
@@ -1351,4 +1351,142 @@ namespace faiss
     }
   }
 
+  template <class C>
+  static inline void multipq_estimators_from_tables_generic(const MultiPQ &pq,
+                                                            size_t nbits,
+                                                            const uint8_t *codes,
+                                                            size_t ncodes,
+                                                            const float *dis_table,
+                                                            size_t k,
+                                                            float *heap_dis,
+                                                            long *heap_ids)
+  {
+    const size_t M = pq.M;
+    const size_t ksub = pq.ksub_high;
+    for (size_t j = 0; j < ncodes; ++j)
+    {
+      faiss::ProductQuantizer::PQDecoderGeneric decoder(
+          codes + j * ((nbits * M + 7) / 8), nbits);
+      float dis = 0;
+      const float *__restrict dt = dis_table;
+      for (size_t m = 0; m < M; m++)
+      {
+        uint64_t c = decoder.decode();
+        dis += dt[c];
+        dt += ksub;
+      }
+
+      if (C::cmp(heap_dis[0], dis))
+      {
+        heap_pop<C>(k, heap_dis, heap_ids);
+        heap_push<C>(k, heap_dis, heap_ids, dis, j);
+      }
+    }
+  }
+
+  template <class C>
+  static void multipq_knn_search_with_tables(
+      const MultiPQ &mq,
+      size_t nbits,
+      size_t ksub,
+      const float *dis_tables,
+      const uint8_t *codes,
+      const size_t ncodes,
+      HeapArray<C> *res,
+      bool init_finalize_heap)
+  {
+    size_t k = res->k, nx = res->nh;
+    size_t ksub = mq.ksub_high, M = mq.M;
+
+#pragma omp parallel for
+    for (size_t i = 0; i < nx; i++)
+    {
+      /* query preparation for asymmetric search: compute look-up tables */
+      const float *dis_table = dis_tables + i * ksub * M;
+
+      /* Compute distances and keep smallest values */
+      long *__restrict heap_ids = res->ids + i * k;
+      float *__restrict heap_dis = res->val + i * k;
+
+      if (init_finalize_heap)
+      {
+        heap_heapify<C>(k, heap_dis, heap_ids);
+      }
+
+      switch (nbits)
+      {
+        /*
+      case 8:
+        multipq_estimators_from_tables<uint8_t, C>(mq,
+                                              codes, ncodes,
+                                              dis_table,
+                                              k, heap_dis, heap_ids);
+        break;
+
+      case 16:
+        multipq_estimators_from_tables<uint16_t, C>(mq,
+                                               (uint16_t *)codes, ncodes,
+                                               dis_table,
+                                               k, heap_dis, heap_ids);
+        break;
+        */
+      default:
+        multipq_estimators_from_tables_generic<C>(mq,
+                                                  nbits,
+                                                  codes, ncodes,
+                                                  dis_table,
+                                                  k, heap_dis, heap_ids);
+        break;
+      }
+
+      if (init_finalize_heap)
+      {
+        heap_reorder<C>(k, heap_dis, heap_ids);
+      }
+    }
+  }
+
+  void MultiPQ::search(const float *x,
+                       size_t nx,
+                       const uint8_t *codes_low,
+                       const uint8_t *codes_high,
+                       const size_t ncodes_low,
+                       const size_t ncodes_high,
+                       std::unordered_map<idx_t, idx_t> high_lookup,
+                       std::vector<idx_t> high_indexes,
+                       float_maxheap_array_t *res,
+                       bool init_finalize_heap = true) const
+  {
+    FAISS_THROW_IF_NOT(nx == res->nh);
+    std::unique_ptr<float[]> dis_tables(new float[nx * ksub_high * M]);
+    compute_distance_tables(nx, x, dis_tables.get());
+    size_t k = res.k;
+
+    idx_t *labels_high = new idx_t[res.nh * res.k];
+    float *distances_high = new idx_t[res.nh * res.k];
+    float_maxheap_array_t res_high{res.nh, res.k, labels_high, distances_high} multipq_knn_search_with_tables<CMax<float, long>>(
+        *this, nbits_low, dis_tables.get(), codes_low, ncodes_low, res, init_finalize_heap);
+    multipq_knn_search_with_tables<CMax<float, long>>(
+        *this, nbits_high, dis_tables.get(), codes_high, ncodes_high, res_high, init_finalize_heap);
+
+    for (int i = 0; i < nx; i++)
+    {
+      long *__restrict heap_ids_high = res_high->ids + i * k;
+      float *__restrict heap_dis_high = res_high->val + i * k;
+
+      long *__restrict heap_ids = res_high + i * k;
+      float *__restrict heap_dis = res_high + i * k;
+      for (int j = 0; j < k; j++)
+      {
+        if (C::cmp(heap_dis[0], heap_dis_high[j]))
+        {
+          heap_pop<C>(k, heap_dis, heap_ids);
+          heap_push<C>(k, heap_dis, heap_ids, heap_dis_high[j], high_indexes[j]);
+        }
+      }
+
+      heap_reorder<C>(k, heap_dis, heap_ids);
+    }
+    delete labels_high, distances_high;
+  }
 } // namespace faiss

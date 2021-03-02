@@ -128,11 +128,14 @@ struct IndexPQStats {
 
 extern IndexPQStats indexPQ_stats;
 
-struct IndexMultiPQ : IndexPQ {
-    MultiPQ  mpq;
-    std::vector<uint8_t> codes_high_precision;
+struct IndexMultiPQ : Index {
+    MultiPQ mpq;
+    std::vector<uint8_t> codes_high;
+    std::vector<uint8_t> codes_low;
     std::vector<float> priors;
     std::unordered_map<idx_t, idx_t> high_precision_lookup;
+    std::vector<idx_t> high_indexes;
+    float threshold;
 
     /** Constructor.
      *
@@ -169,8 +172,6 @@ struct IndexMultiPQ : IndexPQ {
     void reconstruct_n(idx_t i0, idx_t ni, float* recons) const override;
 
     void reconstruct(idx_t key, float* recons) const override;
-
-    long remove_ids(const IDSelector& sel) override;
 
 
 };
