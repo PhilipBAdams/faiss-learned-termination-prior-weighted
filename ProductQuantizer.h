@@ -245,6 +245,8 @@ struct MultiPQ {
     size_t nbits_low;      ///< number of bits per quantization index, low precision
     size_t nbits_high;     ///< number of bits per quantization index, high precision
 
+    ClusteringParameters cp;
+
     // values derived from the above
     size_t dsub;           ///< dimensionality of each subvector
     size_t code_size_low;  ///< byte per indexed vector, low precision
@@ -271,10 +273,10 @@ struct MultiPQ {
 
     /// return the centroids associated with subvector m
     float * get_centroids (size_t m, size_t i) {
-        return &centroids [(m * ksub + i) * dsub];
+        return &centroids [(m * ksub_high + i) * dsub];
     }
     const float * get_centroids (size_t m, size_t i) const {
-        return &centroids [(m * ksub + i) * dsub];
+        return &centroids [(m * ksub_high + i) * dsub];
     }
 
     /// Quantize one vector with the product quantizer
