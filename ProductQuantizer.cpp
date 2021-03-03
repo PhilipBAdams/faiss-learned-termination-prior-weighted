@@ -239,6 +239,34 @@ namespace faiss
     }
   }
 
+  static void init_hypercube_ksub(int d, int ksub,
+                             int n, const float *x,
+                             float *centroids)
+  {
+
+    std::vector<float> mean(d);
+    for (int i = 0; i < n; i++)
+      for (int j = 0; j < d; j++)
+        mean[j] += x[i * d + j];
+
+    float maxm = 0;
+    for (int j = 0; j < d; j++)
+    {
+      mean[j] /= n;
+      if (fabs(mean[j]) > maxm)
+        maxm = fabs(mean[j]);
+    }
+
+    for (int i = 0; i < ksub; i++)
+    {
+      float *cent = centroids + i * d;
+      for (int j = 0; j < (int) floor(log2(ksub)); j++)
+        cent[j] = mean[j] + (((i >> j) & 1) ? 1 : -1) * maxm;
+      for (int j = (int) floor(log2(ksub)); j < d; j++)
+        cent[j] = mean[j];
+    }
+  }
+
   static void init_hypercube_pca(int d, int nbits,
                                  int n, const float *x,
                                  float *centroids)
@@ -991,8 +1019,9 @@ namespace faiss
                dsub * sizeof(float));
 
       Clustering clus(dsub, ksub_low, cp);
+      clus.centroids.resize(dsub * ksub_low);
       init_hypercube(dsub, nbits_low, n, xslice,
-                     clus.centroids.data());
+                   clus.centroids.data());
 
       /*
       if (verbose)
@@ -1019,8 +1048,9 @@ namespace faiss
                x + j * d + m * dsub,
                dsub * sizeof(float));
 
-      Clustering clus(dsub, ksub_high, cp);
-      init_hypercube(dsub, nbits_high, n, xslice,
+      Clustering clus(dsub, ksub_high-ksub_low, cp);
+      clus.centroids.resize(dsub * (ksub_high-ksub_low));
+      init_hypercube_ksub(dsub, ksub_high-ksub_low, n, xslice,
                      clus.centroids.data());
 
       /*

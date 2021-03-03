@@ -104,7 +104,7 @@ int main(int argc, char* argv[])
     // const char *index_key = "IMI2x8,PQ8+16";
     // const char *index_key = "OPQ16_64,IMI2x8,PQ8+16";
 
-    faiss::IndexMultiPQ* index;
+    faiss::IndexPQ* index;
 
 	if (argc != 12)
 	{
@@ -134,7 +134,7 @@ int main(int argc, char* argv[])
 
 		 printf ("[%.3f s] Preparing index d=%ld\n",
 				 elapsed() - t0, d);
-		 index = new faiss::IndexMultiPQ(d, M, nbits_low, nbits_high, threshold, faiss::METRIC_L2);
+		 index = new faiss::IndexPQ(d, M, nbits_low, faiss::METRIC_L2);
 
 		 printf ("[%.3f s] Training low on %ld vectors\n", elapsed() - t0, nt);
 
@@ -142,31 +142,6 @@ int main(int argc, char* argv[])
 		 delete [] xt;
 	}
 
-	{
-		 printf ("[%.3f s] Loading train_high set\n", elapsed() - t0);
-
-		 size_t nth, dh;
-		 float *xt = fvecs_read(train_high_file, &dh, &nth);
-		 assert(d == dh || !"train sets have different dimension");
-
-		 printf ("[%.3f s] Training high on %ld vectors\n", elapsed() - t0, nth);
-
-		 index->train_high_precision(nth, xt);
-		 delete [] xt;
-	}
-
-	{
-		 printf ("[%.3f s] Loading prior set\n", elapsed() - t0);
-
-		 size_t np, dp;
-		 float *xp = fvecs_read(prior_file, &dp, &np);
-		 
-
-		 printf ("[%.3f s] Adding priors\n", elapsed() - t0);
-
-		 index->add_priors(np, std::vector<float>(xp, xp + np));
-		 //delete [] xp;
-	}
 
 
 	{
