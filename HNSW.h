@@ -161,7 +161,7 @@ struct HNSW {
 
   LevelSelectionMethod lselect;
   float* priors;
-
+  float multiplier;
   /// initialize the assign_probas and cum_nneighbor_per_level to
   /// have 2*M links on level 0 and M links on levels > 0
   void set_default_probas(int M, float levelMult);

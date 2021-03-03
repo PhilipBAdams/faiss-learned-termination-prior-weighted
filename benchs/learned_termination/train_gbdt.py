@@ -150,8 +150,8 @@ def train_helper(f, params, lgb_train, feature_name, features, targets, tag,
 
 def preprocess_and_train(training_dir, model_dir, dbname, index_key, xt, xq,
     full_feature, pred_thresh, feature_idx, billion_scale=False):
-    train_file = '{}{}_{}_train.tsv'.format(training_dir, dbname, index_key)
-    test_file = '{}{}_{}_test.tsv'.format(training_dir, dbname, index_key)
+    train_file = '{}{}_{}_{}_train.tsv'.format(training_dir, prior_strategy, dbname, index_key)
+    test_file = '{}{}_{}_{}_test.tsv'.format(training_dir, prior_strategy, dbname, index_key)
     if not os.path.isfile(train_file):
         print 'training file {} not found'.format(train_file)
         return
@@ -182,9 +182,9 @@ def preprocess_and_train(training_dir, model_dir, dbname, index_key, xt, xq,
         suffix += '_Full'
     else:
         suffix += '_Query'
-    model_name = '{}{}_{}_model_thresh{}{}.txt'.format(model_dir, dbname,
+    model_name = '{}{}_{}_{}_model_thresh{}{}.txt'.format(model_dir, prior_strategy, dbname,
         index_key, pred_thresh, suffix)
-    log_name = '{}{}_{}_log_thresh{}{}.tsv'.format(model_dir, dbname,
+    log_name = '{}{}_{}_{}_log_thresh{}{}.tsv'.format(model_dir, prior_strategy, dbname,
         index_key, pred_thresh, suffix)
     
     df_train = pd.read_csv(train_file, header=None, sep='\t')
@@ -278,8 +278,7 @@ def preprocess_and_train(training_dir, model_dir, dbname, index_key, xt, xq,
                 'F1_c_90th_to_c_1st', 'F1_c_100th_to_c_1st',
                 'F2_d_1st', 'F3_d_10th',
                 'F4_d_1st_to_d_10th', 'F5_d_1st_to_c_1st']
-    # import pdb
-    # pdb.set_trace()
+
     train_helper(out_buffer, params, lgb_train, feature_name,
         [train_feature, test_feature], [train_target, test_target],
         ['Train', 'Test'], model_name, num_round=num_round,
@@ -303,6 +302,8 @@ if __name__ == "__main__":
         help='prediction thresholds', default='1', required=True)
     parser.add_argument('-db', '--dbname', help='database name', required=True)
     parser.add_argument('-idx', '--indexkey', help='index key', required=True)
+    parser.add_argument('-prior', '--prior_strategy',
+    help='define the prior strategy (PriorMax, PriorSum, Random)', required=True)
     args = vars(parser.parse_args())
 
     train_size = int(args['trainsize']) # num training vectors (in millions)
@@ -310,7 +311,7 @@ if __name__ == "__main__":
     pred_thresh = [int(x) for x in args['predthresh'].split(',')]
     dbname = args['dbname'] # e.g.: SIFT1M
     index_key = args['indexkey'] # e.g.: IVF1000
-
+    prior_strategy = args['prior_strategy']
     if dbname.startswith('SIFT'):
         xt = util.mmap_bvecs('{}bigann_learn.bvecs'.format(
             DB_DIR))[:train_size*1000*1000]

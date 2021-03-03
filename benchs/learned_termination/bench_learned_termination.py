@@ -58,6 +58,8 @@ parser.add_argument('-prior', '--prior_strategy',
     help='define the prior strategy (PriorMax, PriorSum, Random)', required=True)
 parser.add_argument('-prior_file', '--prior_file',
     help='prior file name', required=True)   
+parser.add_argument('-multiplier', '--multiplier',
+    help='multiplier for PriorSum', default='1')
 args = vars(parser.parse_args())
 
 # -2 = generate training data.
@@ -84,6 +86,7 @@ parametersets = args['parametersets'] # e.g.: nprobe={1,2}
 # parametersets = ["1","1","1","1","2","3","3","3","4","5","9"]
 prior_strategy = args['prior_strategy']
 prior_file = args['prior_file']
+multiplier = float(args['multiplier'])
 # Number of iterations over all queries (to get stable performance number).
 num_iter = 4 
 # When multi-threading is enabled, it indicates that latency measurement
@@ -192,7 +195,7 @@ def get_trained_index():
         index.verbose = True
 
         priors = priors_data.astype("float32").copy()
-        index.set_priors(priors, prior_strategy)
+        index.set_priors(priors, prior_strategy, multiplier)
         
         t0 = time.time()
         # index.train(xtsub)
@@ -312,8 +315,8 @@ index = get_populated_index()
 # Load the prediction model for HNSW index.
 if search_mode == 1 and index_key[:4] == 'HNSW':
     for t in pred_thresh:
-        modelname = '{}{}_{}_model_thresh{}_Log_Full.txt'.format(MODEL_DIR, dbname,
-            index_key, t)
+        modelname = '{}{}_{}_{}_model_thresh{}_Log_Full.txt'.format(MODEL_DIR, prior_strategy,
+         dbname, index_key, t)
         faiss.load_model(index, modelname)
 
 # Load the prediction model for IVF index.
@@ -405,102 +408,114 @@ if search_mode < 0 and index_key[:4] != 'HNSW':
         pkl_file.close()
 
 if binary_search == 0:
-    for it in range(num_iter):
-        print('iteration {}'.format(it))
-        if k < 10:
-            print(' '*(len(parametersets[-1])+1)+'R@1    R@10   R@100  time(ms)')
-        elif k < 100:
-            print(' '*(len(parametersets[-1])+1)+'R@1    R@10   R@100  time(ms)')
-        else:
-            print(' '*(len(parametersets[-1])+1)+'R@1    R@10   R@100  time(ms)')
+    total_recall_list = []
+    total_latency_list = []
+    for _ in range(10):
+        for it in range(num_iter):
+            print('iteration {}'.format(it))
+            if k < 10:
+                print(' '*(len(parametersets[-1])+1)+'R@1    R@10   R@100  time(ms)')
+            elif k < 100:
+                print(' '*(len(parametersets[-1])+1)+'R@1    R@10   R@100  time(ms)')
+            else:
+                print(' '*(len(parametersets[-1])+1)+'R@1    R@10   R@100  time(ms)')
 
-        for param in range(len(parametersets)):
-            sys.stdout.flush()
-            ps.set_index_parameters(index, parametersets[param])
-            total_recall_at1 = 0.0
-            total_recall_at10 = 0.0
-            total_recall_at100 = 0.0
-            total_latency = 0.0
-            for i in range(0, nq, batch_size):
-                # When generating training/testing data for the IVF case,
-                # load the cluster indices where the ground truth nearest
-                # neighbor(s) reside.
-                if search_mode < 0 and index_key[:4] != 'HNSW':
-                    faiss.load_gt(index, -1)
-                    for j in range(batch_size):
-                        faiss.load_gt(index, -2)
-                        for l in range(len(gt[i+j])):
-                            faiss.load_gt(index, int(gt_clusters[gt[i+j][l]]))
-                # When generating training/testing data for the HNSW case,
-                # load the database vector indices of the ground truth
-                # nearest neighbor(s).
-                if search_mode < 0 and index_key[:4] == 'HNSW':
-                    faiss.load_gt(index, -1)
-                    for j in range(batch_size):
-                        faiss.load_gt(index, -2)
-                        for l in range(len(gt[i+j])):
-                            faiss.load_gt(index, int(gt[i+j][l]))
-                query = xq[i:i+batch_size,:]
-                t0 = time.time()
-                D, I = index.search(query, k)
-                t1 = time.time()
-                total_latency += t1-t0
-                total_recall_at1 += compute_recall(I[:, :1],
-                    gt[i:i+batch_size], 1)
-                total_recall_at10 += compute_recall(I[:, :10],
-                    gt[i:i+batch_size], 10)
-                total_recall_at100 += compute_recall(I[:, :100],
-                    gt[i:i+batch_size], 100)
+            for param in range(len(parametersets)):
+                sys.stdout.flush()
+                ps.set_index_parameters(index, parametersets[param])
+                total_recall_at1 = 0.0
+                total_recall_at10 = 0.0
+                total_recall_at100 = 0.0
+                total_latency = 0.0
+                for i in range(0, nq, batch_size):
+                    # When generating training/testing data for the IVF case,
+                    # load the cluster indices where the ground truth nearest
+                    # neighbor(s) reside.
+                    if search_mode < 0 and index_key[:4] != 'HNSW':
+                        faiss.load_gt(index, -1)
+                        for j in range(batch_size):
+                            faiss.load_gt(index, -2)
+                            for l in range(len(gt[i+j])):
+                                faiss.load_gt(index, int(gt_clusters[gt[i+j][l]]))
+                    # When generating training/testing data for the HNSW case,
+                    # load the database vector indices of the ground truth
+                    # nearest neighbor(s).
+                    if search_mode < 0 and index_key[:4] == 'HNSW':
+                        faiss.load_gt(index, -1)
+                        for j in range(batch_size):
+                            faiss.load_gt(index, -2)
+                            for l in range(len(gt[i+j])):
+                                faiss.load_gt(index, int(gt[i+j][l]))
+                    query = xq[i:i+batch_size,:]
+                    t0 = time.time()
+                    D, I = index.search(query, k)
+                    t1 = time.time()
+                    total_latency += t1-t0
+                    total_recall_at1 += compute_recall(I[:, :1],
+                        gt[i:i+batch_size], 1)
+                    total_recall_at10 += compute_recall(I[:, :10],
+                        gt[i:i+batch_size], 10)
+                    total_recall_at100 += compute_recall(I[:, :100],
+                        gt[i:i+batch_size], 100)
 
-                if search_mode < 0:
-                    # When generating training/testing data, read the returned
-                    # search results (since this is where we stored the
-                    # features and targe values).
-                    if index_key[:4] == 'HNSW':
-                        for j in range(len(I)):
-                            line = []
-                            line.append(int(D[j][0]))
-                            line.append(i+j)
-                            for l in range(1+4*len(pred_thresh)):
-                                line.append(D[j][l+1])
-                            results_priors = priors_data[I[j,:10]].astype('float32').flatten().tolist()
-                            line += results_priors
-                            data.append(line)
-                    else:
-                        for j in range(len(I)):
-                            line = []
-                            line.append(int(D[j][0]))
-                            line.append(i+j)
-                            for l in range(10+4*len(pred_thresh)):
-                                line.append(D[j][l+1])
-                            data.append(line)
-            tr1 = total_recall_at1 / float(nq)
-            tr10 = total_recall_at10 / float(nq)
-            tr100 = total_recall_at100 / float(nq)
-            tt = total_latency * 1000.0 / nq
-            print(parametersets[param]+
-                ' '*(len(parametersets[-1])+1-len(parametersets[param]))+
-                '{:.4f} {:.4f} {:.4f} {:.4f}'.format(
-                round(tr1,4), round(tr10,4), round(tr100,4), round(tt,4)))
-            if it > 0 or num_iter == 1:
-                recall_list[param] += total_recall_at100
-                latency_list[param] += total_latency
-    # Write the training/testing data files.
-    if search_mode == -1:
-        util.write_tsv(data, '{}{}_{}_test.tsv'.format(TRAINING_DIR, dbname,
-            index_key))
-    if search_mode == -2:
-        util.write_tsv(data, '{}{}_{}_train.tsv'.format(TRAINING_DIR, dbname,
-            index_key))
+                    if search_mode < 0:
+                        # When generating training/testing data, read the returned
+                        # search results (since this is where we stored the
+                        # features and targe values).
+                        if index_key[:4] == 'HNSW':
+                            for j in range(len(I)):
+                                line = []
+                                line.append(int(D[j][0]))
+                                line.append(i+j)
+                                for l in range(1+4*len(pred_thresh)):
+                                    line.append(D[j][l+1])
+                                if prior_strategy == "Random":
+                                    results_priors = [0.0] * 10
+                                else:
+                                    results_priors = priors_data[I[j,:10]].astype('float32').flatten().tolist()
+                                line += results_priors
+                                data.append(line)
+                        else:
+                            for j in range(len(I)):
+                                line = []
+                                line.append(int(D[j][0]))
+                                line.append(i+j)
+                                for l in range(10+4*len(pred_thresh)):
+                                    line.append(D[j][l+1])
+                                data.append(line)
+                tr1 = total_recall_at1 / float(nq)
+                tr10 = total_recall_at10 / float(nq)
+                tr100 = total_recall_at100 / float(nq)
+                tt = total_latency * 1000.0 / nq
+                print(parametersets[param]+
+                    ' '*(len(parametersets[-1])+1-len(parametersets[param]))+
+                    '{:.4f} {:.4f} {:.4f} {:.4f}'.format(
+                    round(tr1,4), round(tr10,4), round(tr100,4), round(tt,4)))
+                if it > 0 or num_iter == 1:
+                    recall_list[param] += total_recall_at100
+                    latency_list[param] += total_latency
+        # Write the training/testing data files.
+        if search_mode == -1:
+            util.write_tsv(data, '{}{}_{}_{}_test.tsv'.format(TRAINING_DIR, prior_strategy, dbname,
+                index_key))
+        if search_mode == -2:
+            util.write_tsv(data, '{}{}_{}_{}_train.tsv'.format(TRAINING_DIR, prior_strategy, dbname,
+                index_key))
 
-    denom = float(nq*max(num_iter-1, 1))
-    recall_list = [x/denom for x in recall_list]
-    latency_list = [round(x*1000.0/denom, 4) for x in latency_list]
+        denom = float(nq*max(num_iter-1, 1))
+        recall_list = [x/denom for x in recall_list]
+        latency_list = [round(x*1000.0/denom, 4) for x in latency_list]
 
-    print('param_list = {}'.format(param_list))
-    print('recall target = {}'.format(recall_list))
-    print('average latency(ms) = {}'.format(latency_list))
-    print('result_{}_{} = {}'.format(dbname, index_key, [latency_list, recall_list]))
+        print('param_list = {}'.format(param_list))
+        print('recall target = {}'.format(recall_list))
+        print('average latency(ms) = {}'.format(latency_list))
+        print('result_{}_{} = {}'.format(dbname, index_key, [latency_list, recall_list]))
+        total_recall_list.append(recall_list)
+        total_latency_list.append(latency_list)
+        recall_list = [0.0]*len(parametersets)
+        latency_list = [0.0]*len(parametersets) 
+    print('total recall target = {}'.format(total_recall_list))
+    print('total average latency(ms) = {}'.format(total_latency_list))
 else:
     # Binary search to find minimum fixed configuration (for baseline) or minimum
     # prediction multiplier (for early termination) to reach a certain accuracy

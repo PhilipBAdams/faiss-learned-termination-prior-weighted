@@ -8,6 +8,7 @@
 // -*- c++ -*-
 
 #include <fstream>
+#include <iostream>
 
 #include "HNSW.h"
 #include "AuxIndexStructures.h"
@@ -69,8 +70,11 @@ int HNSW::random_level(size_t n)
   } else if (lselect == LevelSelectionMethod::PriorSum) {
     if (n < 10) {
       std::cout << "PriorSum" << std::endl;
+      std::cout << multiplier << std::endl;
+      std::cout << priors[n] << std::endl;
     }
-    f = f + priors[n];
+
+    f = f + (multiplier * priors[n]);
   }
   // could be a bit faster with bissection
   for (int level = 0; level < assign_probas.size(); level++) {
@@ -220,7 +224,7 @@ int HNSW::prepare_level_tab(size_t n, bool preset_levels)
   } else {
     FAISS_ASSERT (n0 == levels.size());
     for (int i = 0; i < n; i++) {
-      int pt_level = random_level(i);
+      int pt_level = random_level(i+n0);
       levels.push_back(pt_level + 1);
     }
   }
@@ -233,6 +237,14 @@ int HNSW::prepare_level_tab(size_t n, bool preset_levels)
                       cum_nb_neighbors(pt_level + 1));
     neighbors.resize(offsets.back(), -1);
   }
+
+  std::ofstream logger;
+  logger.open ("logger.txt", std::ofstream::out | std::ofstream::app);
+
+  for(int i = 0; i < n; i++)
+    logger << levels[i+n0] << "\n";
+
+  logger.close();
 
   return max_level;
 }

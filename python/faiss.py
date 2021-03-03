@@ -169,10 +169,10 @@ def handle_Index(the_class):
         I = rev_swig_ptr(res.labels, nd).copy()
         return lims, D, I
 
-    def replacement_set_priors(self, priors, strategy):
+    def replacement_set_priors(self, priors, strategy, multiplier):
         assert priors.flags.contiguous
         n ,d = priors.shape
-        self.set_priors_c(n, swig_ptr(priors), strategy)
+        self.set_priors_c(n, swig_ptr(priors), strategy, multiplier)
 
     replace_method(the_class, 'add', replacement_add)
     replace_method(the_class, 'add_with_ids', replacement_add_with_ids)
