@@ -1509,7 +1509,7 @@ namespace faiss
         *this, nbits_low, dis_tables.get(), codes_low, ncodes_low, res, init_finalize_heap);
     multipq_knn_search_with_tables<CMax<float, long>>(
         *this, nbits_high, dis_tables.get(), codes_high, ncodes_high, &res_high, init_finalize_heap);
-    /*
+    
     for (int i = 0; i < nx; i++)
     {
       using C = CMax<float, long>;
@@ -1523,13 +1523,13 @@ namespace faiss
         if (C::cmp(heap_dis[0], heap_dis_high[j]))
         {
           heap_pop<C>(k, heap_dis, heap_ids);
-          heap_push<C>(k, heap_dis, heap_ids, heap_dis_high[j], high_indexes[j]);
+          heap_push<C>(k, heap_dis, heap_ids, heap_dis_high[j], high_indexes[heap_ids_high[j]]);
         }
       }
 
       heap_reorder<C>(k, heap_dis, heap_ids);
     }
-    */
+    
     delete labels_high, distances_high; 
   }
 
