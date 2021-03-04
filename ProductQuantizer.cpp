@@ -1019,9 +1019,11 @@ namespace faiss
                dsub * sizeof(float));
 
       Clustering clus(dsub, ksub_low, cp);
+      /*
       clus.centroids.resize(dsub * ksub_low);
       init_hypercube(dsub, nbits_low, n, xslice,
                    clus.centroids.data());
+      */ 
 
       /*
       if (verbose)
@@ -1049,9 +1051,11 @@ namespace faiss
                dsub * sizeof(float));
 
       Clustering clus(dsub, ksub_high-ksub_low, cp);
+      /*
       clus.centroids.resize(dsub * (ksub_high-ksub_low));
       init_hypercube_ksub(dsub, ksub_high-ksub_low, n, xslice,
                      clus.centroids.data());
+      */
 
       /*
       if (verbose)
@@ -1314,6 +1318,7 @@ namespace faiss
           idxm = j;
         }
       }
+      tab = tab + (ksub_high-ksub_low);
 
       encoder.encode(idxm);
     }
@@ -1504,7 +1509,7 @@ namespace faiss
         *this, nbits_low, dis_tables.get(), codes_low, ncodes_low, res, init_finalize_heap);
     multipq_knn_search_with_tables<CMax<float, long>>(
         *this, nbits_high, dis_tables.get(), codes_high, ncodes_high, &res_high, init_finalize_heap);
-
+    /*
     for (int i = 0; i < nx; i++)
     {
       using C = CMax<float, long>;
@@ -1524,7 +1529,8 @@ namespace faiss
 
       heap_reorder<C>(k, heap_dis, heap_ids);
     }
-    delete labels_high, distances_high;
+    */
+    delete labels_high, distances_high; 
   }
 
 
