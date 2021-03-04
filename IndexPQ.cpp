@@ -511,12 +511,12 @@ namespace faiss
         mpq.compute_codes_low(x, &codes_low[0], n);
 
         codes_high.resize(high_indexes.size() * mpq.code_size_high);
-        float *x_high = new float[high_indexes.size() * d];
+        float *x_high = new float[high_indexes.size() * mpq.d];
         for (int i = 0; i < high_indexes.size(); i++)
         {
-            for (int j = 0; j < d; j++)
+            for (int j = 0; j < mpq.d; j++)
             {
-                x_high[i * d + j] = x[high_indexes[i] * d + j];
+                x_high[i * mpq.d + j] = x[high_indexes[i] * mpq.d + j];
             }
         }
         mpq.compute_codes_high(x_high, &codes_high[0], high_indexes.size());
@@ -536,7 +536,7 @@ namespace faiss
     {
         for (idx_t i = 0; i < ni; i++)
         {
-            reconstruct(i0 + i, recons + i * d);
+            reconstruct(i0 + i, recons + i * mpq.d);
         }
     }
 
@@ -563,7 +563,7 @@ namespace faiss
     {
         float_maxheap_array_t res = {
                     size_t(n), size_t(k), labels, distances};
-        mpq.search(x, n, codes_low.data(), codes_high.data(), codes_low.size(), codes_high.size(), high_precision_lookup, high_indexes, &res, true);
+        mpq.search(x, n, codes_low.data(), codes_high.data(), codes_low.size() / mpq.code_size_low, codes_high.size() / mpq.code_size_high, high_precision_lookup, high_indexes, &res, true);
     }
 
 /*****************************************
