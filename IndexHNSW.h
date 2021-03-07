@@ -180,6 +180,17 @@ struct IndexHNSWPQ : IndexHNSW {
       get_distance_computer() const override;
 };
 
+/** MultiPQ index topped with with a HNSW structure to access elements
+ *  more efficiently.
+ */
+	 struct IndexHNSWMultiPQ : IndexHNSW {
+		  IndexHNSWMultiPQ();
+		  IndexHNSWMultiPQ(int d, int pq_m, int nbits_low, int nbits_high, float threshold, int M);
+		  void train(idx_t n, const float* x) override;
+		  DistanceComputer *
+		  get_distance_computer() const override;
+	 };
+
 /** SQ index topped with with a HNSW structure to access elements
  *  more efficiently.
  */

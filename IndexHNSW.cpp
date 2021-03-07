@@ -1076,6 +1076,36 @@ DistanceComputer * IndexHNSWPQ::get_distance_computer () const
 }
 
 
+// IndexHNSWMultiPQ Implementation
+
+IndexHNSWMultiPQ::IndexHNSWMultiPQ() {}
+
+IndexHNSWMultiPQ::IndexHNSWMultiPQ(int d, int pq_m, int nbits_low, int nbits_high, float threshold, int M):
+	 IndexHNSW(new IndexMultiPQ(d, pq_m, nbits_low, nbits_high, threshold, METRIC_L2), M)
+{
+    own_fields = true;
+    is_trained = false;
+}
+
+void IndexHNSWMultiPQ::train(idx_t n, const float* x)
+{
+	 /*
+    IndexHNSW::train (n, x);
+    (dynamic_cast<IndexMultiPQ*> (storage))->pq.compute_sdc_table();
+*/
+}
+
+
+
+DistanceComputer * IndexHNSWMultiPQ::get_distance_computer () const
+{
+	 /*
+    return new PQDis (*dynamic_cast<IndexPQ*> (storage));
+	*/
+	 return nullptr;
+}
+
+
 /**************************************************************
  * IndexHNSWSQ implementation
  **************************************************************/
