@@ -59,7 +59,7 @@ parser.add_argument('-prior', '--prior_strategy',
 parser.add_argument('-prior_file', '--prior_file',
     help='prior file name', required=True)   
 parser.add_argument('-multiplier', '--multiplier',
-    help='multiplier for PriorSum', default='1')
+    help='multiplier for PriorSum', default='NA')
 args = vars(parser.parse_args())
 
 # -2 = generate training data.
@@ -86,7 +86,10 @@ parametersets = args['parametersets'] # e.g.: nprobe={1,2}
 # parametersets = ["1","1","1","1","2","3","3","3","4","5","9"]
 prior_strategy = args['prior_strategy']
 prior_file = args['prior_file']
-multiplier = float(args['multiplier'])
+if prior_strategy == "PriorSum":
+    multiplier = float(args['multiplier'])
+else:
+    multiplier = 'NA'
 # Number of iterations over all queries (to get stable performance number).
 num_iter = 4 
 # When multi-threading is enabled, it indicates that latency measurement
@@ -182,8 +185,8 @@ def choose_train_size(index_key):
     return n_train
 
 def get_trained_index():
-    filename = "%s%s_%s_%s_trained.index" % (
-        TRAINED_IDX_DIR, prior_strategy, dbname, index_key)
+    filename = "%s%s_%s_%s_trained_mult_%s.index" % (
+        TRAINED_IDX_DIR, prior_strategy, dbname, index_key, str(multiplier))
     if not os.path.exists(filename):
         index = faiss.index_factory(d, index_key)
         n_train = choose_train_size(index_key)
@@ -232,13 +235,15 @@ def matrix_slice_iterator(x, bs):
         block_ranges)
 
 def get_populated_index():
-    filename = "%s%s_%s_%s_populated.index" % (
-        POPULATED_IDX_DIR, prior_strategy, dbname, index_key)
+    filename = "%s%s_%s_%s_populated_mult_%s.index" % (
+        POPULATED_IDX_DIR, prior_strategy, dbname, index_key, str(multiplier))
     filenameC = "%s%s_%s_C%d" % (
         POPULATED_IDX_DIR, prior_strategy, dbname, num_cluster)
 
     if not os.path.exists(filename):
         index = get_trained_index()
+        priors = priors_data.astype("float32").copy()
+        index.set_priors(priors, prior_strategy, multiplier)
         index.verbose = True
         i0 = 0
         t0 = time.time()
@@ -448,7 +453,8 @@ if binary_search == 0:
                                 faiss.load_gt(index, int(gt[i+j][l]))
                     query = xq[i:i+batch_size,:]
                     t0 = time.time()
-                    D, I = index.search(query, k)
+                    for _ in range(100):
+                        D, I = index.search(query, k)
                     t1 = time.time()
                     total_latency += t1-t0
                     total_recall_at1 += compute_recall(I[:, :1],

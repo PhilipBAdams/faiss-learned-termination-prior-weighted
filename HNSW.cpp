@@ -68,8 +68,9 @@ int HNSW::random_level(size_t n)
   if (lselect == LevelSelectionMethod::PriorMax) {
     f = std::max(f, priors[n]);
   } else if (lselect == LevelSelectionMethod::PriorSum) {
-    if (n < 10) {
+    if (n%10000 == 0) {
       std::cout << "PriorSum" << std::endl;
+      std::cout << "n = " << n << std::endl;
       std::cout << multiplier << std::endl;
       std::cout << priors[n] << std::endl;
     }
