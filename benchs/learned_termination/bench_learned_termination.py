@@ -89,7 +89,7 @@ prior_file = args['prior_file']
 if prior_strategy == "PriorSum":
     multiplier = float(args['multiplier'])
 else:
-    multiplier = 'NA'
+    multiplier = float(0)
 # Number of iterations over all queries (to get stable performance number).
 num_iter = 4 
 # When multi-threading is enabled, it indicates that latency measurement
@@ -201,7 +201,7 @@ def get_trained_index():
         index.set_priors(priors, prior_strategy, multiplier)
         
         t0 = time.time()
-        # index.train(xtsub)
+        index.train(xtsub)
         index.verbose = False
         print("train done in {} s".format(time.time() - t0))
         print("storing {}".format(filename))
@@ -530,7 +530,8 @@ else:
     if dbname.startswith('DEEP10M') and index_key[:4] == 'HNSW':
         target = [0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.96, 0.97, 0.98, 0.99, 0.9955]
     if dbname.startswith('GIST1M') and index_key[:4] == 'HNSW':
-        target = [0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.96, 0.97, 0.98, 0.99, 0.999]
+        #target = [0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.96, 0.97, 0.98, 0.99, 0.999]
+        target = [0.5, 0.6, 0.7, 0.8, 0.9]
     # For billion-scale, stop at 0.995 because it takes too long to reach 1.0.
     if int(dbname[4:-1]) == 1000:
         target = [0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.96, 0.97, 0.98, 0.99, 0.995]

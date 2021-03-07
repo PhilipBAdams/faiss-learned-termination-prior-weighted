@@ -117,74 +117,108 @@ mkdir -p $RESULT_DIR
 # ### HNSW index without quantization (PriorSum)
 # ### GIST 1M dataset
 # # 1) perform binary search to find the min. fixed configurations to reach different accuracy targets for testing queries.
-# $run -mode 0 -batch 1000 -thread 10 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=0 -prior "PriorSum" -prior_file "expfalloff" -multiplier 1 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_naive_b1_find
-# # 2) based on the min. config in the result file of 1), evaluate the performance of baseline.
-# $run -mode 0 -batch 1 -db GIST1M -idx HNSW16  -prior "PriorSum" -prior_file "expfalloff" -param search_mode=0,efSearch={1,1,1,1,2,3,3,3,4,5,9} > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_naive_b1
-# # 3) find the min. fixed number of distance evaluations (i.e., the termination condition we want to achieve) to reach a certain recall target for a sample of training vectors.
-# $run -mode 0 -batch 10000 -train 1 -thread 10 -bsearch 1,1,10000 -db GIST1M -idx HNSW16 -param search_mode=3 -prior "PriorSum" -prior_file "expfalloff" > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_ndis_b1_find
-# 4) genreate training and testing data for the early terminaiton approach. The -thresh is chosen based on the min. fixed config in 3).
-# $run -mode -1 -batch 1000 -thread 10 -thresh 1,1,26,33,64,96,114,123,150,178,291 -db GIST1M -idx HNSW16 -param search_mode=1 -prior "PriorSum" -prior_file "expfalloff"> $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_test
-# $run -mode -2 -batch 1000 -train 1 -thread 10 -thresh 1,1,26,33,64,96,114,123,150,178,291 -db GIST1M -idx HNSW16 -param search_mode=1 -prior "PriorSum" -prior_file "expfalloff"> $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_train
-# # 5) Using the training and testing data from 4), train the LightGBM decision tree models.
-# $train -train 1 -thresh 1,1,26,33,64,96,114,123,150,178,291 -db GIST1M -idx HNSW16 -prior "PriorSum"
-# # 6) Based on the performance estimation in the training log in 5), choose the -thresh and prediction model, and evaluate the performance. The pred_max is the Train ground truth max from the training log in 5).
-# $run -mode 1 -batch 1000 -thread 10 -thresh 1 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318 -prior "PriorSum" -prior_file "expfalloff" > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree1_b1_find
-# $run -mode 1 -batch 1000 -thread 10 -thresh 26 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318 -prior "PriorSum" -prior_file "expfalloff" > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree26_b1_find
-# $run -mode 1 -batch 1000 -thread 10 -thresh 33 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318 -prior "PriorSum" -prior_file "expfalloff" > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree33_b1_find
-# $run -mode 1 -batch 1000 -thread 10 -thresh 64 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318 -prior "PriorSum" -prior_file "expfalloff" > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree64_b1_find
-# $run -mode 1 -batch 1000 -thread 10 -thresh 96 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318 -prior "PriorSum" -prior_file "expfalloff" > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree96_b1_find
-# $run -mode 1 -batch 1000 -thread 10 -thresh 114 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318 -prior "PriorSum" -prior_file "expfalloff" > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree114_b1_find
-# $run -mode 1 -batch 1000 -thread 10 -thresh 123 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318 -prior "PriorSum" -prior_file "expfalloff" > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree123_b1_find
-# $run -mode 1 -batch 1000 -thread 10 -thresh 150 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318 -prior "PriorSum" -prior_file "expfalloff" > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree150_b1_find
-# $run -mode 1 -batch 1000 -thread 10 -thresh 178 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318 -prior "PriorSum" -prior_file "expfalloff" > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree178_b1_find
-# $run -mode 1 -batch 1000 -thread 10 -thresh 291 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318 -prior "PriorSum" -prior_file "expfalloff" > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree291_b1_find
+# $run -mode 0 -batch 1000 -thread 10 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=0 -prior "PriorSum" -prior_file "expfalloff" -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_naive_b1_find_mult_50
+# $run -mode 0 -batch 1000 -thread 10 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=0 -prior "PriorSum" -prior_file "expfalloff" -multiplier 100 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_naive_b1_find_mult_100
 
-# $run -mode 1 -batch 1 -thresh 1 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,33,62,126,186,206,238,290,394,833} -prior "PriorSum" -prior_file "expfalloff" > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree1_b1
-# $run -mode 1 -batch 1 -thresh 26 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,73,153,261,286,308,370,507,745} -prior "PriorSum" -prior_file "expfalloff" > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree26_b1
-# $run -mode 1 -batch 1 -thresh 33 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,1,110,165,192,212,245,368,458} -prior "PriorSum" -prior_file "expfalloff" > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree33_b1
-# $run -mode 1 -batch 1 -thresh 64 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,1,1,147,165,194,218,278,494} -prior "PriorSum" -prior_file "expfalloff" > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree64_b1
-# $run -mode 1 -batch 1 -thresh 96 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,1,1,1,123,158,187,245,394} -prior "PriorSum" -prior_file "expfalloff" > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree96_b1
-# $run -mode 1 -batch 1 -thresh 114 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,1,1,1,1,249,328,401,613} -prior "PriorSum" -prior_file "expfalloff" > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree114_b1
-# $run -mode 1 -batch 1 -thresh 123 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,1,1,1,1,1,197,386,866} -prior "PriorSum" -prior_file "expfalloff" > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree123_b1
-# $run -mode 1 -batch 1 -thresh 150 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,1,1,1,1,1,1,197,370} -prior "PriorSum" -prior_file "expfalloff" > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree150_b1
-# $run -mode 1 -batch 1 -thresh 178 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,1,1,1,1,1,1,1,405} -prior "PriorSum" -prior_file "expfalloff" > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree178_b1
-# $run -mode 1 -batch 1 -thresh 291 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,1,1,1,1,1,1,1,1} -prior "PriorSum" -prior_file "expfalloff" > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree291_b1
+# # 2) based on the min. config in the result file of 1), evaluate the performance of baseline.
+# $run -mode 0 -batch 1 -db GIST1M -idx HNSW16  -prior "PriorSum" -prior_file "expfalloff" -param search_mode=0,efSearch={1,1,1,1,2,3,3,3,4,5,7}  -multiplier 1 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_naive_b1_mult_1
+# $run -mode 0 -batch 1 -db GIST1M -idx HNSW16  -prior "PriorSum" -prior_file "expfalloff" -param search_mode=0,efSearch={1,1,1,1,2,3,3,3,4,6,8}  -multiplier 5 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_naive_b1_mult_5
+# $run -mode 0 -batch 1 -db GIST1M -idx HNSW16  -prior "PriorSum" -prior_file "expfalloff" -param search_mode=0,efSearch={1,1,1,1,2,2,3,3,4,7,7}  -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_naive_b1_mult_50
+# $run -mode 0 -batch 1 -db GIST1M -idx HNSW16  -prior "PriorSum" -prior_file "expfalloff" -param search_mode=0,efSearch={1,1,1,1,2,3,3,3,4,5,7}  -multiplier 100 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_naive_b1_mult_100
+
+# # 3) find the min. fixed number of distance evaluations (i.e., the termination condition we want to achieve) to reach a certain recall target for a sample of training vectors.
+# $run -mode 0 -batch 10000 -train 1 -thread 10 -bsearch 1,1,10000 -db GIST1M -idx HNSW16 -param search_mode=3 -prior "PriorSum" -prior_file "expfalloff" -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_ndis_b1_find_mult_50
+
+# 4) genreate training and testing data for the early terminaiton approach. The -thresh is chosen based on the min. fixed config in 3).
+# $run -mode -1 -batch 1000 -thread 10 -thresh 1,1,1,33,64,95,107,124,139,181,269 -db GIST1M -idx HNSW16 -param search_mode=1 -prior "PriorSum" -prior_file "expfalloff" -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_test
+# $run -mode -2 -batch 1000 -train 1 -thread 10 -thresh 1,1,1,33,64,95,107,124,139,181,269 -db GIST1M -idx HNSW16 -param search_mode=1 -prior "PriorSum" -prior_file "expfalloff" -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_train
+
+# # 5) Using the training and testing data from 4), train the LightGBM decision tree models.
+# $train -train 1 -thresh 1,1,1,33,64,95,107,124,139,181,269 -db GIST1M -idx HNSW16 -prior "PriorSum"
+
+# # 6) Based on the performance estimation in the training log in 5), choose the -thresh and prediction model, and evaluate the performance. The pred_max is the Train ground truth max from the training log in 5).
+# $run -mode 1 -batch 1000 -thread 10 -thresh 1 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=432 -prior "PriorSum" -prior_file "expfalloff" -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree1_b1_find
+# $run -mode 1 -batch 1000 -thread 10 -thresh 33 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=432 -prior "PriorSum" -prior_file "expfalloff" -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree33_b1_find
+# $run -mode 1 -batch 1000 -thread 10 -thresh 64 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=432 -prior "PriorSum" -prior_file "expfalloff" -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree64_b1_find
+# $run -mode 1 -batch 1000 -thread 10 -thresh 95 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=432 -prior "PriorSum" -prior_file "expfalloff" -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree95_b1_find
+# $run -mode 1 -batch 1000 -thread 10 -thresh 107 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=432 -prior "PriorSum" -prior_file "expfalloff" -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree107_b1_find
+# $run -mode 1 -batch 1000 -thread 10 -thresh 124 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=432 -prior "PriorSum" -prior_file "expfalloff" -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree124_b1_find
+# $run -mode 1 -batch 1000 -thread 10 -thresh 139 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=432 -prior "PriorSum" -prior_file "expfalloff" -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree139_b1_find
+# $run -mode 1 -batch 1000 -thread 10 -thresh 181 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=432 -prior "PriorSum" -prior_file "expfalloff" -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree181_b1_find
+# $run -mode 1 -batch 1000 -thread 10 -thresh 269 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=432 -prior "PriorSum" -prior_file "expfalloff" -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree269_b1_find
+
+# $run -mode 1 -batch 1 -thresh 1 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=432,efSearch={1,1,1,49,118,196,257,292,362,427,596} -prior "PriorSum" -prior_file "expfalloff" -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree1_b1_mult_50
+# $run -mode 1 -batch 1 -thresh 33 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=432,efSearch={1,1,1,1,60,121,125,139,180,217,350} -prior "PriorSum" -prior_file "expfalloff" -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree33_b1_mult_50
+# $run -mode 1 -batch 1 -thresh 64 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=432,efSearch={1,1,1,1,1,109,126,156,202,239,701} -prior "PriorSum" -prior_file "expfalloff" -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree64_b1_mult_50
+# $run -mode 1 -batch 1 -thresh 95 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=432,efSearch={1,1,1,1,1,1,113,139,165,249,665} -prior "PriorSum" -prior_file "expfalloff" -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree95_b1_mult_50
+# $run -mode 1 -batch 1 -thresh 107 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=432,efSearch={1,1,1,1,1,1,1,278,350,454,931} -prior "PriorSum" -prior_file "expfalloff" -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree107_b1_mult_50
+# $run -mode 1 -batch 1 -thresh 124 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=432,efSearch={1,1,1,1,1,1,1,1,149,331,703} -prior "PriorSum" -prior_file "expfalloff" -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree124_b1_mult_50
+# $run -mode 1 -batch 1 -thresh 139 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=432,efSearch={1,1,1,1,1,1,1,1,1,149,650} -prior "PriorSum" -prior_file "expfalloff" -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree139_b1_mult_50
+# $run -mode 1 -batch 1 -thresh 181 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=432,efSearch={1,1,1,1,1,1,1,1,1,1,554} -prior "PriorSum" -prior_file "expfalloff" -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree181_b1_mult_50
+# $run -mode 1 -batch 1 -thresh 269 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=432,efSearch={1,1,1,1,1,1,1,1,1,1,1} -prior "PriorSum" -prior_file "expfalloff" -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_tree269_b1_mult_50
 
 # ### HNSW index without quantization (Random)
 # ### GIST 1M dataset
 # # 1) perform binary search to find the min. fixed configurations to reach different accuracy targets for testing queries.
 # $run -mode 0 -batch 1000 -thread 10 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=0 -prior "Random" -prior_file "expfalloff"> $RESULT_DIR/Random_result_GIST1M_HNSW16_naive_b1_find
+
 # # 2) based on the min. config in the result file of 1), evaluate the performance of baseline.
-# $run -mode 0 -batch 1 -db GIST1M -idx HNSW16 -param search_mode=0,efSearch={1,1,1,1,2,3,3,3,4,5,9} -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_naive_b1
+# $run -mode 0 -batch 1 -db GIST1M -idx HNSW16 -param search_mode=0,efSearch={1,1,1,1,2,3,3,3,4,5,9} -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_naive_b1_mult_NA
+
 # # 3) find the min. fixed number of distance evaluations (i.e., the termination condition we want to achieve) to reach a certain recall target for a sample of training vectors.
 # $run -mode 0 -batch 10000 -train 1 -thread 10 -bsearch 1,1,10000 -db GIST1M -idx HNSW16 -param search_mode=3 -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_ndis_b1_find
+
 # 4) genreate training and testing data for the early terminaiton approach. The -thresh is chosen based on the min. fixed config in 3).
-# $run -mode -1 -batch 1000 -thread 10 -thresh 1,1,27,33,64,96,112,123,149,178,260 -db GIST1M -idx HNSW16 -param search_mode=1 -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_test
-# $run -mode -2 -batch 1000 -train 1 -thread 10 -thresh 1,1,27,33,64,96,112,123,149,178,260 -db GIST1M -idx HNSW16 -param search_mode=1 -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_train
+# $run -mode -1 -batch 1000 -thread 10 -thresh 1,1,27,33,64,96,114,123,150,179,260 -db GIST1M -idx HNSW16 -param search_mode=1 -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_test
+# $run -mode -2 -batch 1000 -train 1 -thread 10 -thresh 1,1,27,33,64,96,114,123,150,179,260 -db GIST1M -idx HNSW16 -param search_mode=1 -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_train
+
 # # 5) Using the training and testing data from 4), train the LightGBM decision tree models.
-# $train -train 1 -thresh 1,1,27,33,64,96,112,123,149,178,260 -db GIST1M -idx HNSW16 -prior "Random"
+# $train -train 1 -thresh 1,1,27,33,64,96,114,123,150,179,260 -db GIST1M -idx HNSW16 -prior "Random"
+
 # # 6) Based on the performance estimation in the training log in 5), choose the -thresh and prediction model, and evaluate the performance. The pred_max is the Train ground truth max from the training log in 5).
 # $run -mode 1 -batch 1000 -thread 10 -thresh 1 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318 -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree1_b1_find
 # $run -mode 1 -batch 1000 -thread 10 -thresh 27 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318 -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree27_b1_find
 # $run -mode 1 -batch 1000 -thread 10 -thresh 33 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318 -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree33_b1_find
 # $run -mode 1 -batch 1000 -thread 10 -thresh 64 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318 -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree64_b1_find
 # $run -mode 1 -batch 1000 -thread 10 -thresh 96 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318 -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree96_b1_find
-# $run -mode 1 -batch 1000 -thread 10 -thresh 112 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318 -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree112_b1_find
+# $run -mode 1 -batch 1000 -thread 10 -thresh 114 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318 -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree114_b1_find
 # $run -mode 1 -batch 1000 -thread 10 -thresh 123 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318 -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree123_b1_find
-# $run -mode 1 -batch 1000 -thread 10 -thresh 149 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318 -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree149_b1_find
-# $run -mode 1 -batch 1000 -thread 10 -thresh 178 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318 -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree178_b1_find
+# $run -mode 1 -batch 1000 -thread 10 -thresh 150 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318 -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree150_b1_find
+# $run -mode 1 -batch 1000 -thread 10 -thresh 179 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318 -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree178_b1_find
 # $run -mode 1 -batch 1000 -thread 10 -thresh 260 -bsearch 1,1,20000 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318 -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree260_b1_find
 
-# $run -mode 1 -batch 1 -thresh 1 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,58,97,203,318,344,382,475,556,2585} -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree1_b1
-# $run -mode 1 -batch 1 -thresh 27 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,101,231,322,335,396,438,583,1010} -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree27_b1
-# $run -mode 1 -batch 1 -thresh 33 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,1,187,318,358,393,475,594,1129} -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree33_b1
-# $run -mode 1 -batch 1 -thresh 64 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,1,1,251,284,305,346,449,600} -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree64_b1
-# $run -mode 1 -batch 1 -thresh 96 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,1,1,1,220,284,318,437,584} -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree96_b1
-# $run -mode 1 -batch 1 -thresh 112 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,1,1,1,1,281,364,490,874} -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree112_b1
-# $run -mode 1 -batch 1 -thresh 123 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,1,1,1,1,1,305,453,680} -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree123_b1
-# $run -mode 1 -batch 1 -thresh 149 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,1,1,1,1,1,1,390,864} -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree149_b1
-# $run -mode 1 -batch 1 -thresh 178 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,1,1,1,1,1,1,1,843} -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree178_b1
-# $run -mode 1 -batch 1 -thresh 260 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,1,1,1,1,1,1,1,1} -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree260_b1
+# $run -mode 1 -batch 1 -thresh 1 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,56,98,221,337,359,401,455,554,1292} -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree1_b1_mult_NA
+# $run -mode 1 -batch 1 -thresh 27 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,97,234,332,360,409,458,616,817} -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree27_b1_mult_NA
+# $run -mode 1 -batch 1 -thresh 33 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,1,194,308,354,401,441,522,912} -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree33_b1_mult_NA
+# $run -mode 1 -batch 1 -thresh 64 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,1,1,245,286,343,373,424,641} -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree64_b1_mult_NA
+# $run -mode 1 -batch 1 -thresh 96 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,1,1,1,217,272,364,445,701} -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree96_b1_mult_NA
+# $run -mode 1 -batch 1 -thresh 114 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,1,1,1,1,293,358,444,734} -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree114_b1_mult_NA
+# $run -mode 1 -batch 1 -thresh 123 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,1,1,1,1,1,323,462,797} -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree123_b1_mult_NA
+# $run -mode 1 -batch 1 -thresh 150 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,1,1,1,1,1,1,427,794} -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree150_b1_mult_NA
+# $run -mode 1 -batch 1 -thresh 179 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,1,1,1,1,1,1,1,749} -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree179_b1_mult_NA
+# $run -mode 1 -batch 1 -thresh 260 -db GIST1M -idx HNSW16 -param search_mode=2,pred_max=318,efSearch={1,1,1,1,1,1,1,1,1,1,1} -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_tree260_b1_mult_NA
+
+
+# ### HNSW index with standard PQ quantization (Random)
+# ### GIST 1M dataset
+# # 1) perform binary search to find the min. fixed configurations to reach different accuracy targets for testing queries.
+# $run -mode 0 -batch 1000 -thread 10 -bsearch 1,1,20000 -db GIST1M -idx HNSW16_PQ32x4 -param search_mode=0 -prior "Random" -prior_file "expfalloff"> $RESULT_DIR/Random_result_GIST1M_HNSW16_PQ32x4_naive_b1_find
+# $run -mode 0 -batch 1000 -thread 10 -bsearch 1,1,20000 -db GIST1M -idx HNSW16_PQ32x8 -param search_mode=0 -prior "Random" -prior_file "expfalloff"> $RESULT_DIR/Random_result_GIST1M_HNSW16_PQ32x8_naive_b1_find
+
+# # 2) based on the min. config in the result file of 1), evaluate the performance of baseline.
+# $run -mode 0 -batch 1 -db GIST1M -idx HNSW16_PQ32x4 -param search_mode=0,efSearch={7,11,16,25,47} -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_PQ32x4_naive_b1_mult_0.0
+# $run -mode 0 -batch 1 -db GIST1M -idx HNSW16_PQ32x8 -param search_mode=0,efSearch={7,11,16,26,46} -prior "Random" -prior_file "expfalloff" > $RESULT_DIR/Random_result_GIST1M_HNSW16_PQ32x8_naive_b1_mult_0.0
+
+# ### HNSW index with standard PQ quantization (PriorSum)
+# ### GIST 1M dataset
+# # 1) perform binary search to find the min. fixed configurations to reach different accuracy targets for testing queries.
+# $run -mode 0 -batch 1000 -thread 10 -bsearch 1,1,20000 -db GIST1M -idx HNSW16_PQ32x4 -param search_mode=0 -prior "PriorSum" -prior_file "expfalloff" -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_PQ32x4_naive_b1_find
+# $run -mode 0 -batch 1000 -thread 10 -bsearch 1,1,20000 -db GIST1M -idx HNSW16_PQ32x8 -param search_mode=0 -prior "PriorSum" -prior_file "expfalloff" -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_PQ32x8_naive_b1_find
+
+# # 2) based on the min. config in the result file of 1), evaluate the performance of baseline.
+# $run -mode 0 -batch 1 -db GIST1M -idx HNSW16_PQ32x4 -param search_mode=0,efSearch={7,10,16,24,49} -prior "PriorSum" -prior_file "expfalloff" -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_PQ32x4_naive_b1_mult_50.0
+# $run -mode 0 -batch 1 -db GIST1M -idx HNSW16_PQ32x8 -param search_mode=0,efSearch={7,11,16,26,43} -prior "PriorSum" -prior_file "expfalloff" -multiplier 50 > $RESULT_DIR/PriorSum_result_GIST1M_HNSW16_PQ32x8_naive_b1_mult_50.0
+
 
 #######################################################################################################
 
