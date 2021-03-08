@@ -1395,8 +1395,12 @@ namespace faiss
   template <class C>
   static inline void multipq_estimators_from_tables_generic(const MultiPQ &pq,
                                                             size_t nbits,
+															size_t nbits_high,
                                                             const uint8_t *codes,
                                                             size_t ncodes,
+															const uint8_t *codes_high,
+															size_t ncodes_high,
+															std::unordered_map<idx_t, idx_t> high_lookup,
                                                             const float *dis_table,
                                                             size_t k,
                                                             float *heap_dis,
@@ -1406,32 +1410,46 @@ namespace faiss
     const size_t ksub = pq.ksub_high;
     for (size_t j = 0; j < ncodes; ++j)
     {
-      MultiPQ::PQDecoderGeneric decoder(
-          codes + j * ((nbits * M + 7) / 8), nbits);
-      float dis = 0;
-      const float *__restrict dt = dis_table;
-      for (size_t m = 0; m < M; m++)
-      {
-        uint64_t c = decoder.decode();
-        dis += dt[c];
-        dt += ksub;
-      }
+		 auto high_idx = high_lookup.find(j);
+		 MultiPQ::PQDecoderGeneric *decoder;
+		 if (high_idx == high_lookup.end()) {
+			  decoder = new MultiPQ::PQDecoderGeneric(
+				   codes + j * ((nbits * M + 7) / 8), nbits);
+		 } else {
+			  decoder = new MultiPQ::PQDecoderGeneric(
+				   codes + high_idx->second * ((nbits_high * M + 7) / 8), nbits_high);
+		 }
+		 
+		 float dis = 0;
+		 const float *__restrict dt = dis_table;
+		 for (size_t m = 0; m < M; m++)
+		 {
+			  uint64_t c = decoder->decode();
+			  dis += dt[c];
+			  dt += ksub;
+		 }
 
-      if (C::cmp(heap_dis[0], dis))
-      {
-        heap_pop<C>(k, heap_dis, heap_ids);
-        heap_push<C>(k, heap_dis, heap_ids, dis, j);
-      }
+		 if (C::cmp(heap_dis[0], dis))
+		 {
+			  heap_pop<C>(k, heap_dis, heap_ids);
+			  heap_push<C>(k, heap_dis, heap_ids, dis, j);
+		 }
+		 delete decoder;
     }
   }
 
-  template <class C>
-  static void multipq_knn_search_with_tables(
+
+	 template <class C>
+	 static void multipq_knn_search_with_tables(
       const MultiPQ &mq,
       size_t nbits,
+	  size_t nbits_high,
       const float *dis_tables,
       const uint8_t *codes,
       const size_t ncodes,
+	  const uint8_t *codes_high,
+	  const size_t ncodes_high,
+	  std::unordered_map<idx_t, idx_t> high_lookup,
       HeapArray<C> *res,
       bool init_finalize_heap)
   {
@@ -1472,8 +1490,9 @@ namespace faiss
         */
       default:
         multipq_estimators_from_tables_generic<C>(mq,
-                                                  nbits,
+                                                  nbits, nbits_high,
                                                   codes, ncodes,
+												  codes_high, ncodes_high, high_lookup,
                                                   dis_table,
                                                   k, heap_dis, heap_ids);
         break;
@@ -1502,13 +1521,13 @@ namespace faiss
     compute_distance_tables(nx, x, dis_tables.get());
     size_t k = res->k;
 
-    idx_t *labels_high = new idx_t[res->nh * res->k];
-    float *distances_high = new float[res->nh * res->k];
-    float_maxheap_array_t res_high{res->nh, res->k, labels_high, distances_high};
+    //idx_t *labels_high = new idx_t[res->nh * res->k];
+    //float *distances_high = new float[res->nh * res->k];
+    //float_maxheap_array_t res_high{res->nh, res->k, labels_high, distances_high};
     multipq_knn_search_with_tables<CMax<float, long>>(
-        *this, nbits_low, dis_tables.get(), codes_low, ncodes_low, res, init_finalize_heap);
-    multipq_knn_search_with_tables<CMax<float, long>>(
-        *this, nbits_high, dis_tables.get(), codes_high, ncodes_high, &res_high, init_finalize_heap);
+		 *this, nbits_low, nbits_high, dis_tables.get(), codes_low, ncodes_low, codes_high, ncodes_high, high_lookup,  res, init_finalize_heap);
+    /*_knn_search_with_tables<CMax<float, long>>(
+	 *this, nbits_high, dis_tables.get(), codes_high, ncodes_high, &res_high, init_finalize_heap);
     
     for (int i = 0; i < nx; i++)
     {
@@ -1531,10 +1550,11 @@ namespace faiss
     }
     
     delete labels_high, distances_high; 
+	*/
   }
 
 
-  MultiPQ::PQEncoderGeneric::PQEncoderGeneric(uint8_t *code, int nbits,
+	 MultiPQ::PQEncoderGeneric::PQEncoderGeneric(uint8_t *code, int nbits,
                                                        uint8_t offset)
       : code(code), offset(offset), nbits(nbits), reg(0)
   {
