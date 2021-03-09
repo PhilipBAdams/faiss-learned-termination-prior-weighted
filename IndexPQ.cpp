@@ -473,7 +473,7 @@ namespace faiss
  * IndexMultiPQ
  ******************************************/
 
-    IndexMultiPQ::IndexMultiPQ(int d, size_t M, size_t nbits_low, size_t nbits_high, float threshold, MetricType metric) : mpq(d, M, nbits_low, nbits_high), threshold(threshold)
+    IndexMultiPQ::IndexMultiPQ(int d, size_t M, size_t nbits_low, size_t nbits_high, float threshold, MetricType metric) : Index(d, metric), mpq(d, M, nbits_low, nbits_high), threshold(threshold)
     {
     }
 

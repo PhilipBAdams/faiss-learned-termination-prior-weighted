@@ -290,7 +290,7 @@ void IndexHNSW::search (idx_t n, const float *x, idx_t k,
                         maxheap_reorder (k, simi, idxi);
                     }
                 }  */              
-
+                
                 if (reconstruct_from_neighbors &&
                     reconstruct_from_neighbors->k_reorder != 0) {
                     int k_reorder = reconstruct_from_neighbors->k_reorder;
@@ -303,7 +303,7 @@ void IndexHNSW::search (idx_t n, const float *x, idx_t k,
                     maxheap_heapify (k_reorder, simi, idxi, simi, idxi, k_reorder);
                     maxheap_reorder (k_reorder, simi, idxi);
                 }
-
+                
             }
 
         }
@@ -1072,14 +1072,23 @@ struct MultiPQDis: DistanceComputer {
     IndexMultiPQ* impq;
     std::vector<float> precomputed_table;
     size_t ndis;
+    //std::vector<float> holders;
+    //const float* query;
 
     float operator () (idx_t i) override
     {
+        ndis++;
         return impq->dis_lookup(precomputed_table.data(), i);
+        //impq->reconstruct(i, holders.data());
+        //fvec_L2sqr(holders.data(), query, impq->mpq.d);
+        
     }
 
     float symmetric_dis(idx_t i, idx_t j) override
     {
+        //impq->reconstruct(i, holders.data());
+        //impq->reconstruct(j, holders.data()+ impq->mpq.d);
+        //return fvec_L2sqr(holders.data(), holders.data() + impq->mpq.d, impq->mpq.d);
         return impq->sdc_lookup(i,j);
     }
 
@@ -1087,10 +1096,13 @@ struct MultiPQDis: DistanceComputer {
         : impq(storage) {
       precomputed_table.resize(impq->mpq.M * impq->mpq.ksub_high);
       ndis = 0;
+
+      //holders.resize(impq->mpq.d * 2);
     }
 
     void set_query(const float *x) override {
         impq->mpq.compute_distance_table(x, precomputed_table.data());
+        //query = x;
     }
 
     ~MultiPQDis() override {
@@ -1121,7 +1133,11 @@ void IndexHNSWMultiPQ::train(idx_t n, const float* x)
     (dynamic_cast<IndexMultiPQ*> (storage))->mpq.compute_sdc_table();
 }
 
-
+void IndexHNSWMultiPQ::search (idx_t n, const float *x, idx_t k,
+                 float *distances, idx_t *labels) const 
+{
+    IndexHNSW::search(n, x, k, distances, labels);
+}
 
 DistanceComputer * IndexHNSWMultiPQ::get_distance_computer () const
 {

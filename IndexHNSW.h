@@ -189,6 +189,8 @@ struct IndexHNSWPQ : IndexHNSW {
 		  void train(idx_t n, const float* x) override;
 		  DistanceComputer *
 		  get_distance_computer() const override;
+      void search (idx_t n, const float *x, idx_t k,
+                 float *distances, idx_t *labels) const override;
 	 };
 
 /** SQ index topped with with a HNSW structure to access elements

@@ -104,11 +104,11 @@ int main(int argc, char* argv[])
     // const char *index_key = "IMI2x8,PQ8+16";
     // const char *index_key = "OPQ16_64,IMI2x8,PQ8+16";
 
-    faiss::IndexHNSWMultiPQ* index;
+    faiss::IndexHNSWPQ* index;
 
-	if (argc != 16)
+	if (argc != 15)
 	{
-		 printf("Usage: %s data_file train_low_file train_high_file query_file prior_file gt_file threshold hnsw_m pq_m nbits_low nbits_high k efSearch strategy niter\n", argv[0]);
+		 printf("Usage: %s data_file train_low_file train_high_file query_file prior_file gt_file threshold hnsw_m pq_m nbits_low nbits_high k efSearch strategy\n", argv[0]);
 		 exit(1);
 	}
 	
@@ -126,8 +126,7 @@ int main(int argc, char* argv[])
 	size_t k = atoi(argv[12]);
 	size_t efSearch = atoi(argv[13]);
 	char* strategy = argv[14];
-	size_t niter = atoi(argv[15]);
-	printf("threshold: %f, hnsw_m: %d, pq_m: %d, nbits_low: %d, nbits_high: %d, k: %d, efSearch: %d, niter: %d\n", threshold, hnsw_m, pq_m, nbits_low, nbits_high, k, efSearch, niter);
+	printf("threshold: %f, hnsw_m: %d, pq_m: %d, nbits_low: %d, nbits_high: %d, k: %d, efSearch: %d\n", threshold, hnsw_m, pq_m, nbits_low, nbits_high, k, efSearch);
 
 	size_t d;
 
@@ -139,14 +138,14 @@ int main(int argc, char* argv[])
 
 		 printf ("[%.3f s] Preparing index d=%ld\n",
 				 elapsed() - t0, d);
-		 index = new faiss::IndexHNSWMultiPQ(d, pq_m, nbits_low, nbits_high, threshold, hnsw_m);
+		 index = new faiss::IndexHNSWPQ(d, pq_m, hnsw_m);
 		 index->hnsw.efSearch = efSearch;
 		 printf ("[%.3f s] Training low on %ld vectors\n", elapsed() - t0, nt);
 
 		 index->train(nt, xt);
 		 delete [] xt;
 	}
-
+	/*
 	{
 		 printf ("[%.3f s] Loading train_high set\n", elapsed() - t0);
 
@@ -160,7 +159,7 @@ int main(int argc, char* argv[])
 		 ((faiss::IndexMultiPQ*) index->storage)->mpq.compute_sdc_table();
 		 delete [] xt;
 	}
-
+	*/
 	{
 		 printf ("[%.3f s] Loading prior set\n", elapsed() - t0);
 
@@ -170,7 +169,7 @@ int main(int argc, char* argv[])
 
 		 printf ("[%.3f s] Adding priors\n", elapsed() - t0);
 		 index->set_priors(np, xp, strategy);
-		 ((faiss::IndexMultiPQ*) index->storage)->add_priors(np, std::vector<float>(xp, xp + np));
+		 //((faiss::IndexMultiPQ*) index->storage)->add_priors(np, std::vector<float>(xp, xp + np));
 		 //delete [] xp;
 	}
 
@@ -231,9 +230,7 @@ int main(int argc, char* argv[])
 		 faiss::Index::idx_t *I = new  faiss::Index::idx_t[nq * k];
 		 float *D = new float[nq * k];
 		 double start = omp_get_wtime();
-		 for (int i = 0; i < niter; i++) {
 		 index->search(nq, xq, k, D, I);
-		 }
 		 double end = omp_get_wtime();
 		 printf("Search Time: %f s\n", end-start);
 
@@ -257,7 +254,7 @@ int main(int argc, char* argv[])
 
 		for(int j = 0; j < k; j++) {
 			float holder[d];
-			((faiss::IndexMultiPQ*) index->storage)->reconstruct(gt[j], holder);
+			((faiss::IndexPQ*) index->storage)->reconstruct(gt[j], holder);
 			printf("GT: %d, %f\n", gt[j], faiss::fvec_L2sqr(xq, holder, d));
 			printf("%d, %f\n", I[j], D[j]);
 		}
