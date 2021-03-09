@@ -547,11 +547,11 @@ namespace faiss
         auto search = high_precision_lookup.find(key);
         if (search != high_precision_lookup.end())
         {
-            mpq.decode_high(&codes_high[search->second * mpq.code_size_high], recons);
+            mpq.decode_high(codes_high.data() + (search->second * mpq.code_size_high), recons);
         }
         else
         {
-            mpq.decode_low(&codes_low[key * mpq.code_size_low], recons);
+            mpq.decode_low(codes_low.data() + key*mpq.code_size_low, recons);
         }
     }
 
