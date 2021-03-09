@@ -13,7 +13,7 @@
 #include <stdint.h>
 
 #include <vector>
-#include <unordered_map>
+#include <map>
 
 #include "Clustering.h"
 #include "Heap.h"
@@ -343,8 +343,8 @@ struct MultiPQ {
                  const uint8_t * codes_high,
                  const size_t ncodes_low,
                  const size_t ncodes_high,
-                 std::unordered_map<idx_t, idx_t> high_lookup,
-                 std::vector<idx_t> high_indexes,
+                 const std::map<idx_t, idx_t>& high_lookup,
+                 const std::vector<idx_t>& high_indexes,
                  float_maxheap_array_t *res,
                  bool init_finalize_heap = true) const;
 

@@ -247,7 +247,10 @@ int main(int argc, char* argv[])
 		 printf("R@1 = %.4f\n", n_1 / float(nq));
 		 printf("R@10 = %.4f\n", n_10 / float(nq));
 		 printf("R@100 = %.4f\n", n_100 / float(nq));
-
+		
+		for (int i = 0; i < k; i++) {
+			printf("%d %f\n", I[i], D[i]);
+		}
 	}
 
 	delete [] xq;

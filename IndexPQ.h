@@ -133,7 +133,7 @@ struct IndexMultiPQ : Index {
     std::vector<uint8_t> codes_high;
     std::vector<uint8_t> codes_low;
     std::vector<float> priors;
-    std::unordered_map<idx_t, idx_t> high_precision_lookup;
+    std::map<idx_t, idx_t> high_precision_lookup;
     std::vector<idx_t> high_indexes;
     float threshold;
 

@@ -240,8 +240,8 @@ namespace faiss
   }
 
   static void init_hypercube_ksub(int d, int ksub,
-                             int n, const float *x,
-                             float *centroids)
+                                  int n, const float *x,
+                                  float *centroids)
   {
 
     std::vector<float> mean(d);
@@ -260,9 +260,9 @@ namespace faiss
     for (int i = 0; i < ksub; i++)
     {
       float *cent = centroids + i * d;
-      for (int j = 0; j < (int) floor(log2(ksub)); j++)
+      for (int j = 0; j < (int)floor(log2(ksub)); j++)
         cent[j] = mean[j] + (((i >> j) & 1) ? 1 : -1) * maxm;
-      for (int j = (int) floor(log2(ksub)); j < d; j++)
+      for (int j = (int)floor(log2(ksub)); j < d; j++)
         cent[j] = mean[j];
     }
   }
@@ -1023,7 +1023,7 @@ namespace faiss
       clus.centroids.resize(dsub * ksub_low);
       init_hypercube(dsub, nbits_low, n, xslice,
                    clus.centroids.data());
-      */ 
+      */
 
       /*
       if (verbose)
@@ -1050,7 +1050,7 @@ namespace faiss
                x + j * d + m * dsub,
                dsub * sizeof(float));
 
-      Clustering clus(dsub, ksub_high-ksub_low, cp);
+      Clustering clus(dsub, ksub_high - ksub_low, cp);
       /*
       clus.centroids.resize(dsub * (ksub_high-ksub_low));
       init_hypercube_ksub(dsub, ksub_high-ksub_low, n, xslice,
@@ -1318,7 +1318,7 @@ namespace faiss
           idxm = j;
         }
       }
-      tab = tab + (ksub_high-ksub_low);
+      tab = tab + (ksub_high - ksub_low);
 
       encoder.encode(idxm);
     }
@@ -1392,15 +1392,16 @@ namespace faiss
     }
   }
 
+  using idx_t = Index::idx_t;
   template <class C>
   static inline void multipq_estimators_from_tables_generic(const MultiPQ &pq,
                                                             size_t nbits,
-															size_t nbits_high,
+                                                            size_t nbits_high,
                                                             const uint8_t *codes,
                                                             size_t ncodes,
-															const uint8_t *codes_high,
-															size_t ncodes_high,
-															std::unordered_map<idx_t, idx_t> high_lookup,
+                                                            const uint8_t *codes_high,
+                                                            size_t ncodes_high,
+                                                            const std::map<idx_t, idx_t> &high_lookup,
                                                             const float *dis_table,
                                                             size_t k,
                                                             float *heap_dis,
@@ -1408,48 +1409,85 @@ namespace faiss
   {
     const size_t M = pq.M;
     const size_t ksub = pq.ksub_high;
-    for (size_t j = 0; j < ncodes; ++j)
-    {
-		 auto high_idx = high_lookup.find(j);
-		 MultiPQ::PQDecoderGeneric *decoder;
-		 if (high_idx == high_lookup.end()) {
-			  decoder = new MultiPQ::PQDecoderGeneric(
-				   codes + j * ((nbits * M + 7) / 8), nbits);
-		 } else {
-			  decoder = new MultiPQ::PQDecoderGeneric(
-				   codes + high_idx->second * ((nbits_high * M + 7) / 8), nbits_high);
-		 }
-		 
-		 float dis = 0;
-		 const float *__restrict dt = dis_table;
-		 for (size_t m = 0; m < M; m++)
-		 {
-			  uint64_t c = decoder->decode();
-			  dis += dt[c];
-			  dt += ksub;
-		 }
+    size_t last_idx = 0;
 
-		 if (C::cmp(heap_dis[0], dis))
-		 {
-			  heap_pop<C>(k, heap_dis, heap_ids);
-			  heap_push<C>(k, heap_dis, heap_ids, dis, j);
-		 }
-		 delete decoder;
+    for (auto it = high_lookup.begin(); it != high_lookup.end(); it++)
+    {
+      while (last_idx < it->first)
+      {
+        MultiPQ::PQDecoderGeneric decoder(
+            codes + last_idx * ((nbits * M + 7) / 8), nbits);
+
+        float dis = 0;
+        const float *__restrict dt = dis_table;
+        for (size_t m = 0; m < M; m++)
+        {
+          uint64_t c = decoder.decode();
+          dis += dt[c];
+          dt += ksub;
+        }
+
+        if (C::cmp(heap_dis[0], dis))
+        {
+          heap_pop<C>(k, heap_dis, heap_ids);
+          heap_push<C>(k, heap_dis, heap_ids, dis, last_idx);
+        }
+        last_idx++;
+      }
+
+      MultiPQ::PQDecoderGeneric decoder(
+          codes_high + it->second * ((nbits_high * M + 7) / 8), nbits_high);
+
+      float dis = 0;
+      const float *__restrict dt = dis_table;
+      for (size_t m = 0; m < M; m++)
+      {
+        uint64_t c = decoder.decode();
+        dis += dt[c];
+        dt += ksub;
+      }
+
+      if (C::cmp(heap_dis[0], dis))
+      {
+        heap_pop<C>(k, heap_dis, heap_ids);
+        heap_push<C>(k, heap_dis, heap_ids, dis, last_idx);
+      }
+      last_idx++;
+    }
+
+    for (size_t j = last_idx; j < ncodes; ++j)
+    {
+      MultiPQ::PQDecoderGeneric decoder(
+          codes + j * ((nbits * M + 7) / 8), nbits);
+
+      float dis = 0;
+      const float *__restrict dt = dis_table;
+      for (size_t m = 0; m < M; m++)
+      {
+        uint64_t c = decoder.decode();
+        dis += dt[c];
+        dt += ksub;
+      }
+
+      if (C::cmp(heap_dis[0], dis))
+      {
+        heap_pop<C>(k, heap_dis, heap_ids);
+        heap_push<C>(k, heap_dis, heap_ids, dis, j);
+      }
     }
   }
 
-
-	 template <class C>
-	 static void multipq_knn_search_with_tables(
+  template <class C>
+  static void multipq_knn_search_with_tables(
       const MultiPQ &mq,
       size_t nbits,
-	  size_t nbits_high,
+      size_t nbits_high,
       const float *dis_tables,
       const uint8_t *codes,
       const size_t ncodes,
-	  const uint8_t *codes_high,
-	  const size_t ncodes_high,
-	  std::unordered_map<idx_t, idx_t> high_lookup,
+      const uint8_t *codes_high,
+      const size_t ncodes_high,
+      const std::map<idx_t, idx_t> &high_lookup,
       HeapArray<C> *res,
       bool init_finalize_heap)
   {
@@ -1492,7 +1530,7 @@ namespace faiss
         multipq_estimators_from_tables_generic<C>(mq,
                                                   nbits, nbits_high,
                                                   codes, ncodes,
-												  codes_high, ncodes_high, high_lookup,
+                                                  codes_high, ncodes_high, high_lookup,
                                                   dis_table,
                                                   k, heap_dis, heap_ids);
         break;
@@ -1511,8 +1549,8 @@ namespace faiss
                        const uint8_t *codes_high,
                        const size_t ncodes_low,
                        const size_t ncodes_high,
-                       std::unordered_map<idx_t, idx_t> high_lookup,
-                       std::vector<idx_t> high_indexes,
+                       const std::map<idx_t, idx_t> &high_lookup,
+                       const std::vector<idx_t> &high_indexes,
                        float_maxheap_array_t *res,
                        bool init_finalize_heap) const
   {
@@ -1525,7 +1563,7 @@ namespace faiss
     //float *distances_high = new float[res->nh * res->k];
     //float_maxheap_array_t res_high{res->nh, res->k, labels_high, distances_high};
     multipq_knn_search_with_tables<CMax<float, long>>(
-		 *this, nbits_low, nbits_high, dis_tables.get(), codes_low, ncodes_low, codes_high, ncodes_high, high_lookup,  res, init_finalize_heap);
+        *this, nbits_low, nbits_high, dis_tables.get(), codes_low, ncodes_low, codes_high, ncodes_high, high_lookup, res, init_finalize_heap);
     /*_knn_search_with_tables<CMax<float, long>>(
 	 *this, nbits_high, dis_tables.get(), codes_high, ncodes_high, &res_high, init_finalize_heap);
     
@@ -1553,9 +1591,8 @@ namespace faiss
 	*/
   }
 
-
-	 MultiPQ::PQEncoderGeneric::PQEncoderGeneric(uint8_t *code, int nbits,
-                                                       uint8_t offset)
+  MultiPQ::PQEncoderGeneric::PQEncoderGeneric(uint8_t *code, int nbits,
+                                              uint8_t offset)
       : code(code), offset(offset), nbits(nbits), reg(0)
   {
     assert(nbits <= 64);
@@ -1620,7 +1657,7 @@ namespace faiss
   }
 
   MultiPQ::PQDecoderGeneric::PQDecoderGeneric(const uint8_t *code,
-                                                       int nbits)
+                                              int nbits)
       : code(code),
         offset(0),
         nbits(nbits),
