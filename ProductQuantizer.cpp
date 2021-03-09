@@ -1260,6 +1260,69 @@ namespace faiss
     }
   }
 
+  void MultiPQ::compute_sdc_table()
+  {
+    sdc_table.resize(M * ksub_high * ksub_high);
+
+    for (int m = 0; m < M; m++)
+    {
+
+      const float *cents = centroids.data() + m * ksub_high * dsub;
+      float *dis_tab = sdc_table.data() + m * ksub_high * ksub_high;
+
+      // TODO optimize with BLAS
+      for (int i = 0; i < ksub_high; i++)
+      {
+        const float *centi = cents + i * dsub;
+        for (int j = 0; j < ksub_high; j++)
+        {
+          float accu = 0;
+          const float *centj = cents + j * dsub;
+          for (int k = 0; k < dsub; k++)
+            accu += sqr(centi[k] - centj[k]);
+          dis_tab[i + j * ksub_high] = accu;
+        }
+      }
+    }
+  }
+
+  float MultiPQ::dis_lookup(const float* tbl, const uint8_t* code, bool high_p) 
+  {
+    float dis = 0.0;
+    size_t nbits = high_p ? nbits_high : nbits_low;
+    PQDecoderGeneric decoder(code, nbits);
+
+    for (size_t m = 0; m < M; m++) {
+      uint64_t c = decoder.decode();
+      dis += tbl[c];
+      tbl += ksub_high;
+    }
+
+    return dis;
+  }
+
+  float MultiPQ::sdc_lookup(const uint8_t* code1, bool high1_p, const uint8_t* code2, bool high2_p) 
+  {
+    float dis = 0.0;
+    size_t nbits1 = high1_p ? nbits_high : nbits_low;
+    PQDecoderGeneric decoder1(code1, nbits1);
+    size_t nbits2 = high2_p ? nbits_high : nbits_low;
+    PQDecoderGeneric decoder2(code2, nbits2);
+    FAISS_THROW_IF_NOT(sdc_table.size() == M * ksub_high * ksub_high);
+
+    const float* tab = sdc_table.data();
+
+    for (size_t m = 0; m < M; m++) {
+      uint64_t c1 = decoder1.decode();
+      uint64_t c2 = decoder2.decode();
+      dis += tab[c1 + c2 * ksub_high];
+
+      tab += ksub_high * ksub_high;
+    }    
+
+    return dis;
+  }
+
   void MultiPQ::compute_codes_high(const float *x,
                                    uint8_t *codes,
                                    size_t n) const

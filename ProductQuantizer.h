@@ -245,6 +245,12 @@ struct MultiPQ {
     size_t nbits_low;      ///< number of bits per quantization index, low precision
     size_t nbits_high;     ///< number of bits per quantization index, high precision
 
+    /// Symmetric Distance Table
+    std::vector<float> sdc_table;
+
+    // intitialize the SDC table from the centroids
+    void compute_sdc_table ();
+
     ClusteringParameters cp;
 
     // values derived from the above
@@ -347,6 +353,9 @@ struct MultiPQ {
                  std::vector<idx_t> high_indexes,
                  float_maxheap_array_t *res,
                  bool init_finalize_heap = true) const;
+
+    float dis_lookup(const float* tbl, const uint8_t* code, bool high_p);
+    float sdc_lookup(const uint8_t* code1, bool high1_p, const uint8_t* code2, bool high2_p);
 
     struct PQEncoderGeneric {
         uint8_t *code;   ///< code for this vector

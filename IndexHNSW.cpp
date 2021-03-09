@@ -248,19 +248,8 @@ void IndexHNSW::set_priors(idx_t n, float* priors, std::string strategy)
 void IndexHNSW::train(idx_t n, const float* x)
 {
     // hnsw structure does not require training
-    // storage->train (n, x);
+    storage->train (n, x);
     is_trained = true;
-
-    std::string strategy = "PriorSum";
-    std::cout << "I'm a cool cat using the " << strategy << " strategy" << std::endl;
-    this->hnsw.priors = const_cast<float*>(x);
-    if (!strategy.compare("Random")) {
-        this->hnsw.lselect = Random;
-    } else if (!strategy.compare("PriorSum")) {
-        this->hnsw.lselect = PriorSum;
-    } else if (!strategy.compare("PriorMax")) {
-        this->hnsw.lselect = PriorMax;
-    }
 }
 
 void IndexHNSW::search (idx_t n, const float *x, idx_t k,
@@ -288,10 +277,10 @@ void IndexHNSW::search (idx_t n, const float *x, idx_t k,
                 dis->set_query(x + i * d);
 
                 maxheap_heapify (k, simi, idxi);
-                if (search_mode == 0) { // fixed configuration
+                //if (search_mode == 0) { // fixed configuration
                     hnsw.search(*dis, k, idxi, simi, vt);
                     maxheap_reorder (k, simi, idxi);
-                } else {
+                /*} else {
                     hnsw.search_custom(*dis, k, idxi, simi, search_mode, i,
                         x + i * d, d, pred_max, vt);
                     // No need to reorder when search_mode = 1 since we
@@ -300,7 +289,7 @@ void IndexHNSW::search (idx_t n, const float *x, idx_t k,
                     if (search_mode != 1) { 
                         maxheap_reorder (k, simi, idxi);
                     }
-                }                
+                }  */              
 
                 if (reconstruct_from_neighbors &&
                     reconstruct_from_neighbors->k_reorder != 0) {
@@ -330,6 +319,7 @@ void IndexHNSW::add(idx_t n, const float *x)
     int n0 = ntotal;
     storage->add(n, x);
     ntotal = storage->ntotal;
+    printf("ntotal = %d\n", ntotal);
 
     hnsw_add_vertices (*this, n0, n, x, verbose,
                        hnsw.levels.size() == ntotal);
@@ -1075,7 +1065,44 @@ DistanceComputer * IndexHNSWPQ::get_distance_computer () const
     return new PQDis (*dynamic_cast<IndexPQ*> (storage));
 }
 
+namespace {
 
+
+struct MultiPQDis: DistanceComputer {
+    IndexMultiPQ* impq;
+    std::vector<float> precomputed_table;
+    size_t ndis;
+
+    float operator () (idx_t i) override
+    {
+        return impq->dis_lookup(precomputed_table.data(), i);
+    }
+
+    float symmetric_dis(idx_t i, idx_t j) override
+    {
+        return impq->sdc_lookup(i,j);
+    }
+
+    MultiPQDis(IndexMultiPQ* storage)
+        : impq(storage) {
+      precomputed_table.resize(impq->mpq.M * impq->mpq.ksub_high);
+      ndis = 0;
+    }
+
+    void set_query(const float *x) override {
+        impq->mpq.compute_distance_table(x, precomputed_table.data());
+    }
+
+    ~MultiPQDis() override {
+#pragma omp critical
+        {
+            hnsw_stats.ndis += ndis;
+        }
+    }
+};
+
+
+}  // namespace
 // IndexHNSWMultiPQ Implementation
 
 IndexHNSWMultiPQ::IndexHNSWMultiPQ() {}
@@ -1089,22 +1116,17 @@ IndexHNSWMultiPQ::IndexHNSWMultiPQ(int d, int pq_m, int nbits_low, int nbits_hig
 
 void IndexHNSWMultiPQ::train(idx_t n, const float* x)
 {
-	 /*
+	
     IndexHNSW::train (n, x);
-    (dynamic_cast<IndexMultiPQ*> (storage))->pq.compute_sdc_table();
-*/
+    (dynamic_cast<IndexMultiPQ*> (storage))->mpq.compute_sdc_table();
 }
 
 
 
 DistanceComputer * IndexHNSWMultiPQ::get_distance_computer () const
 {
-	 /*
-    return new PQDis (*dynamic_cast<IndexPQ*> (storage));
-	*/
-	 return nullptr;
+    return new MultiPQDis (dynamic_cast<IndexMultiPQ*> (storage));
 }
-
 
 /**************************************************************
  * IndexHNSWSQ implementation

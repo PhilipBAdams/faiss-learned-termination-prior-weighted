@@ -521,6 +521,7 @@ namespace faiss
         }
         mpq.compute_codes_high(x_high, &codes_high[0], high_indexes.size());
         delete x_high;
+        ntotal = n;
     }
 
     void IndexMultiPQ::reset()
@@ -551,6 +552,28 @@ namespace faiss
         else
         {
             mpq.decode_low(&codes_low[key * mpq.code_size_low], recons);
+        }
+    }
+
+    float IndexMultiPQ::sdc_lookup (idx_t i, idx_t j) 
+    {
+        auto high1_lkup = high_precision_lookup.find(i);
+        auto high2_lkup = high_precision_lookup.find(j);
+        bool high1_p = (high1_lkup != high_precision_lookup.end());
+        bool high2_p = (high2_lkup != high_precision_lookup.end());
+        const uint8_t* code1 = high1_p ?  (codes_high.data() + (high1_lkup->second * mpq.code_size_high)): (codes_low.data() + (i*mpq.code_size_low));
+        const uint8_t* code2 = high2_p ?  (codes_high.data() + (high2_lkup->second * mpq.code_size_high)): (codes_low.data() + (j*mpq.code_size_low));
+
+        return mpq.sdc_lookup(code1, high1_p, code2, high2_p);
+    }
+
+    float IndexMultiPQ::dis_lookup (const float* table, idx_t i)
+    {
+        auto high_lkup = high_precision_lookup.find(i);
+        if (high_lkup == high_precision_lookup.end()) {
+            return mpq.dis_lookup(table, codes_low.data() + (i*mpq.code_size_low), false);
+        } else {
+            return mpq.dis_lookup(table, codes_high.data() + (high_lkup->second*mpq.code_size_high), true);
         }
     }
 

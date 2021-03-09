@@ -173,6 +173,9 @@ struct IndexMultiPQ : Index {
 
     void reconstruct(idx_t key, float* recons) const override;
 
+    float sdc_lookup (idx_t i, idx_t j);
+
+    float dis_lookup (const float* table, idx_t i);
 
 };
 
