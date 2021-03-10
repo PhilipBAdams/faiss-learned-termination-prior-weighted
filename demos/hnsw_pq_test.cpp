@@ -246,11 +246,14 @@ int main(int argc, char* argv[])
 
 // evaluate result by hand.
 		 float recalls[k];
+		 for (int i = 0; i < k; i++) {
+			 recalls[i] = 0;
+		 }
 		 for(int i = 0; i < nq; i++) {
 			  int gt_nn = gt[i * k2];
 			  for(int j = 0; j < k; j++) {
 				   if (I[i * k + j] == gt_nn) {
-						for (int i2 = 0; i2 < j; i2++) {
+						for (int i2 = j; i2 < k; i2++) {
 							recalls[i2]++;
 						}
 				   }
@@ -258,13 +261,13 @@ int main(int argc, char* argv[])
 		 }
 		 ofile << efSearch << "," << (end-start) / ((double) niter);
 		 for (int i = 0; i < k; i++) {
-			 ofile << "," << recalls[i];
+			 ofile << "," << (recalls[i] / float(nq));
 		 }
 		 ofile << std::endl;
 
-		 printf("R@1 = %.4f\n", recalls[1] / float(nq));
-		 printf("R@10 = %.4f\n", recalls[10] / float(nq));
-		 printf("R@100 = %.4f\n", recalls[100] / float(nq));
+		 printf("R@1 = %.4f\n", recalls[0] / float(nq));
+		 printf("R@10 = %.4f\n", recalls[9] / float(nq));
+		 printf("R@100 = %.4f\n", recalls[99] / float(nq));
 	}
 	ofile.close();
 	
