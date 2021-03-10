@@ -16,6 +16,7 @@
 #include <vector>
 #include <chrono>
 #include <omp.h>
+#include <fstream>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -106,9 +107,9 @@ int main(int argc, char* argv[])
 
     faiss::IndexHNSWMultiPQ* index;
 
-	if (argc != 16)
+	if (argc != 17)
 	{
-		 printf("Usage: %s data_file train_low_file train_high_file query_file prior_file gt_file threshold hnsw_m pq_m nbits_low nbits_high k efSearch strategy niter\n", argv[0]);
+		 printf("Usage: %s data_file train_low_file train_high_file query_file prior_file gt_file threshold hnsw_m pq_m nbits_low nbits_high k efSearch strategy niter outfile\n", argv[0]);
 		 exit(1);
 	}
 	
@@ -127,6 +128,7 @@ int main(int argc, char* argv[])
 	size_t efSearch = atoi(argv[13]);
 	char* strategy = argv[14];
 	size_t niter = atoi(argv[15]);
+	char* outfile = argv[16];
 	printf("threshold: %f, hnsw_m: %d, pq_m: %d, nbits_low: %d, nbits_high: %d, k: %d, efSearch: %d, niter: %d\n", threshold, hnsw_m, pq_m, nbits_low, nbits_high, k, efSearch, niter);
 
 	size_t d;
@@ -222,8 +224,11 @@ int main(int argc, char* argv[])
 		 delete [] gt_int;
 	}
 
+	std::ofstream ofile;
+	ofile.open(outfile);
+	for (efSearch = 10; efSearch <=100; efSearch += 10)
 	{ // Use the found configuration to perform a search
-
+		 index->hnsw.efSearch = efSearch;
 		 printf ("[%.3f s] Perform a search on %ld queries\n",
 				 elapsed() - t0, nq);
 
@@ -232,7 +237,7 @@ int main(int argc, char* argv[])
 		 float *D = new float[nq * k];
 		 double start = omp_get_wtime();
 		 for (int i = 0; i < niter; i++) {
-		 index->search(nq, xq, k, D, I);
+		 	index->search(nq, xq, k, D, I);
 		 }
 		 double end = omp_get_wtime();
 		 printf("Search Time: %f s\n", end-start);
@@ -240,28 +245,28 @@ int main(int argc, char* argv[])
 		 printf ("[%.3f s] Compute recalls\n", elapsed() - t0);
 
 // evaluate result by hand.
-		 int n_1 = 0, n_10 = 0, n_100 = 0;
+		 float recalls[k];
 		 for(int i = 0; i < nq; i++) {
 			  int gt_nn = gt[i * k2];
 			  for(int j = 0; j < k; j++) {
 				   if (I[i * k + j] == gt_nn) {
-						if(j < 1) n_1++;
-						if(j < 10) n_10++;
-						if(j < 100) n_100++;
+						for (int i2 = 0; i2 < j; i2++) {
+							recalls[i2]++;
+						}
 				   }
 			  }
 		 }
-		 printf("R@1 = %.4f\n", n_1 / float(nq));
-		 printf("R@10 = %.4f\n", n_10 / float(nq));
-		 printf("R@100 = %.4f\n", n_100 / float(nq));
+		 ofile << efSearch << "," << (end-start) / ((double) niter);
+		 for (int i = 0; i < k; i++) {
+			 ofile << "," << recalls[i];
+		 }
+		 ofile << std::endl;
 
-		for(int j = 0; j < k; j++) {
-			float holder[d];
-			((faiss::IndexMultiPQ*) index->storage)->reconstruct(gt[j], holder);
-			printf("GT: %d, %f\n", gt[j], faiss::fvec_L2sqr(xq, holder, d));
-			printf("%d, %f\n", I[j], D[j]);
-		}
+		 printf("R@1 = %.4f\n", recalls[1] / float(nq));
+		 printf("R@10 = %.4f\n", recalls[10] / float(nq));
+		 printf("R@100 = %.4f\n", recalls[100] / float(nq));
 	}
+	ofile.close();
 
 	
 
